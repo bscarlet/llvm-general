@@ -1,8 +1,10 @@
 #define __STDC_LIMIT_MACROS
 #include "llvm-c/Core.h"
-#include "llvm/LLVMContext.h"
-#include "llvm/Constants.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/Function.h"
 #include "LLVM/General/Internal/FFI/Value.h"
+#include "Constant.h"
 
 using namespace llvm;
 
@@ -60,12 +62,19 @@ LLVMValueRef LLVM_General_ConstFloatOfArbitraryPrecision(
 	LLVMContextRef c,
 	unsigned bits,
 	const uint64_t *words,
-	unsigned notPairOfFloats
+	LLVMFloatSemantics semantics
 ) {
+  const fltSemantics *llvmSemantics;
+  switch(semantics) {
+#define ENUM_CASE(x) case LLVMFloatSemantics ## x: llvmSemantics = &APFloat::x; break;
+LLVM_GENERAL_FOR_EACH_FLOAT_SEMANTICS(ENUM_CASE)
+#undef ENUM_CASE
+	default: llvmSemantics = &APFloat::Bogus; // Is this correct?
+	}
 	return wrap(
 		ConstantFP::get(
 			*unwrap(c),
-			APFloat(APInt(bits, ArrayRef<uint64_t>(words, (bits-1)/64 + 1)), notPairOfFloats)
+			APFloat(*llvmSemantics, APInt(bits, ArrayRef<uint64_t>(words, (bits-1)/64 + 1)))
 		)
 	);
 }

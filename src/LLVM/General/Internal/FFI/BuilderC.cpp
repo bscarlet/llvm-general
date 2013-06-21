@@ -1,6 +1,6 @@
 #define __STDC_LIMIT_MACROS
-#include "llvm/LLVMContext.h"
-#include "llvm/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/IRBuilder.h"
 
 #include "llvm-c/Core.h"
 
@@ -11,7 +11,7 @@ using namespace llvm;
 namespace llvm {
 static AtomicOrdering unwrap(LLVMAtomicOrdering l) {
 	switch(l) {
-#define ENUM_CASE(x) case LLVM ## x ## AtomicOrdering: return x;
+#define ENUM_CASE(x) case LLVMAtomicOrdering ## x: return x;
 LLVM_GENERAL_FOR_EACH_ATOMIC_ORDERING(ENUM_CASE)
 #undef ENUM_CASE
 	default: return AtomicOrdering(0);

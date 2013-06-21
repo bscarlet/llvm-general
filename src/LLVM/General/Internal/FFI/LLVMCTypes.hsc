@@ -19,6 +19,7 @@ module LLVM.General.Internal.FFI.LLVMCTypes where
 #include "LLVM/General/Internal/FFI/Function.h"
 #include "LLVM/General/Internal/FFI/GlobalValue.h"
 #include "LLVM/General/Internal/FFI/Type.h"
+#include "LLVM/General/Internal/FFI/Constant.h"
 
 import Language.Haskell.TH.Quote
 
@@ -96,7 +97,7 @@ newtype MDKindID = MDKindID CUInt
 
 newtype MemoryOrdering = MemoryOrdering CUInt
   deriving (Eq, Typeable, Data)
-#define MO_Rec(n) { #n, LLVM ## n ## AtomicOrdering },
+#define MO_Rec(n) { #n, LLVMAtomicOrdering ## n },
 #{inject ATOMIC_ORDERING, MemoryOrdering, MemoryOrdering, memoryOrdering, MO_Rec}
 
 newtype Linkage = Linkage CUInt
@@ -178,3 +179,8 @@ newtype FunctionAttr = FunctionAttr CUInt
   deriving (Eq, Read, Show, Bits, Typeable, Data)
 #define FA_Rec(n,a) { #n, LLVM ## n ## a },
 #{inject FUNCTION_ATTR, FunctionAttr, FunctionAttr, functionAttr, FA_Rec}
+
+newtype FloatSemantics = FloatSemantics CUInt
+  deriving (Eq, Read, Show, Typeable, Data)
+#define FS_Rec(n) { #n, LLVMFloatSemantics ## n },
+#{inject FLOAT_SEMANTICS, FloatSemantics, FloatSemantics, floatSemantics, FS_Rec}

@@ -1,5 +1,5 @@
 #define __STDC_LIMIT_MACROS
-#include "llvm/LLVMContext.h"
+#include "llvm/IR/LLVMContext.h"
 
 #include "llvm/Support/SourceMgr.h"
 #include "llvm-c/Core.h"
@@ -24,8 +24,8 @@ LLVMDiagnosticKind LLVM_General_GetSMDiagnosticKind(SMDiagnostic *p) {
 
 int LLVM_General_GetSMDiagnosticLineNo(SMDiagnostic *p) { return p->getLineNo(); }
 int LLVM_General_GetSMDiagnosticColumnNo(SMDiagnostic *p) { return p->getColumnNo(); }
-const char *LLVM_General_GetSMDiagnosticFilename(SMDiagnostic *p) { return p->getFilename().c_str(); }
-const char *LLVM_General_GetSMDiagnosticMessage(SMDiagnostic *p) { return p->getMessage().c_str(); }
-const char *LLVM_General_GetSMDiagnosticLineContents(SMDiagnostic *p) { return p->getLineContents().c_str(); }
+  const char *LLVM_General_GetSMDiagnosticFilename(SMDiagnostic *p) { return p->getFilename().str().c_str(); }
+  const char *LLVM_General_GetSMDiagnosticMessage(SMDiagnostic *p) { return p->getMessage().str().c_str(); }
+  const char *LLVM_General_GetSMDiagnosticLineContents(SMDiagnostic *p) { return p->getLineContents().str().c_str(); }
 
 }
