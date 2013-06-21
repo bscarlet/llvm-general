@@ -10,12 +10,6 @@
 	macro(AcquireRelease) \
 	macro(SequentiallyConsistent)
 
-typedef enum {
-#define ENUM_CASE(x) LLVM ## x ## AtomicOrdering,
-LLVM_GENERAL_FOR_EACH_ATOMIC_ORDERING(ENUM_CASE)
-#undef ENUM_CASE
-} LLVMAtomicOrdering;
-
 #define LLVM_GENERAL_FOR_EACH_SYNCRONIZATION_SCOPE(macro) \
 	macro(SingleThread) \
 	macro(CrossThread)

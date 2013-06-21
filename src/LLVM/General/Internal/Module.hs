@@ -175,8 +175,10 @@ withModuleFromAST context@(Context c) (A.Module moduleId dataLayout triple defin
                 defineLocal n p
                 n <- encodeM n
                 liftIO $ FFI.setValueName (FFI.upCast p) n
-                attrs <- encodeM attrs
-                liftIO $ FFI.addAttribute p attrs
+                unless (null attrs) $
+                       do attrs <- encodeM attrs
+                          liftIO $ FFI.addAttribute p attrs
+                          return ()
                 return ()
               forInterleavedM blocks $ \(A.BasicBlock bName namedInstrs term) -> do
                 b <- encodeM bName

@@ -16,7 +16,7 @@ import LLVM.General.Internal.FFI.LLVMCTypes
 
 #define LAST_OTHER_INST(num) { 0, 0, 0, 0, } };
 
-#include "llvm/Instruction.def"
+#include "llvm/IR/Instruction.def"
 
 #{
 define hsc_inject() {                                       \
