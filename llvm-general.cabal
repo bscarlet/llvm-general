@@ -32,8 +32,8 @@ source-repository head
 source-repository this
   type: git
   location: git://github.com/bscarlet/llvm-general.git
-	branch: llvm-3.2
-	tag: v3.2.0.2
+  branch: llvm-3.2
+  tag: v3.2.0.2
 
 library
   build-tools: llvm-config
