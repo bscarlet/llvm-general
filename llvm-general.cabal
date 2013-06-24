@@ -36,6 +36,10 @@ source-repository this
   branch: llvm-3.3
   tag: v3.3.0.0
 
+flag shared-llvm
+  description: link against llvm shared rather than static library
+  default: False
+
 library
   build-tools: llvm-config
   ghc-options: -fwarn-unused-imports
