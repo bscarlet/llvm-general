@@ -1,10 +1,12 @@
 import Control.Monad
-import Data.List (isPrefixOf, (\\), intercalate)
+import Data.Monoid
+import Data.Maybe
+import Data.List (isPrefixOf, (\\), intercalate, stripPrefix)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Distribution.Simple
 import Distribution.Simple.Program
-import Distribution.Simple.Setup
+import Distribution.Simple.Setup hiding (Flag)
 import Distribution.Simple.LocalBuildInfo
 import Distribution.PackageDescription
 import System.Environment
@@ -49,22 +51,31 @@ main = do
     confHook = \(genericPackageDescription, hookedBuildInfo) configFlags -> do
       llvmConfig <- getLLVMConfig configFlags
 
-      cppflags <- llvmConfig ["--cppflags"]
-      let useCppFlags = (filter ("-D" `isPrefixOf`) $ words cppflags) \\ (map ("-D"++) uncheckedHsFFIDefines)
+      llvmCppFlags <- do
+        l <- llvmConfig ["--cppflags"]
+        return $ (filter ("-D" `isPrefixOf`) $ words l) \\ (map ("-D"++) uncheckedHsFFIDefines)
       includeDirs <- liftM lines $ llvmConfig ["--includedir"]
       libDirs@[libDir] <- liftM lines $ llvmConfig ["--libdir"]
+      [llvmVersion] <- liftM lines $ llvmConfig ["--version"]
+      let sharedLib = case llvmVersion of
+                        "3.2" -> "LLVM-3.2svn"
+                        x -> "LLVM-" ++ x
+      staticLibs <- liftM (map (fromJust . stripPrefix "-l") . words) $ llvmConfig ["--libs"]
 
       let genericPackageDescription' = genericPackageDescription {
             condLibrary = do
               libraryCondTree <- condLibrary genericPackageDescription
               return libraryCondTree {
-                condTreeData = 
-                  let library = condTreeData libraryCondTree
-                  in library { 
-                    libBuildInfo = 
-                      let buildInfo = libBuildInfo library 
-                      in buildInfo { ccOptions = ccOptions buildInfo ++ useCppFlags }
-                    }
+                condTreeData = condTreeData libraryCondTree <> mempty {
+                    libBuildInfo = mempty { ccOptions = llvmCppFlags }
+                  },
+                condTreeComponents = condTreeComponents libraryCondTree ++ [
+                  (
+                    Var (Flag (FlagName "shared-llvm")),
+                    CondNode (mempty { libBuildInfo = mempty { extraLibs = [sharedLib] } }) [] [],
+                    Just (CondNode (mempty { libBuildInfo = mempty { extraLibs = staticLibs } }) [] [])
+                  )
+                ] 
               }
            }
           configFlags' = configFlags {
