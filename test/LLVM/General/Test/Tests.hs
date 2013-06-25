@@ -13,7 +13,6 @@ import qualified LLVM.General.Test.Module as Module
 import qualified LLVM.General.Test.Optimization as Optimization
 import qualified LLVM.General.Test.Target as Target
 
-
 tests = testGroup "llvm-general" [
     Constants.tests,
     DataLayout.tests,
