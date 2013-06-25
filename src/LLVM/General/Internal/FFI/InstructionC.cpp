@@ -165,10 +165,6 @@ LLVMBool LLVM_General_GetInBounds(LLVMValueRef i) {
 	return unwrap<GEPOperator>(i)->isInBounds();
 }
 
-void LLVM_General_SetInBounds(LLVMValueRef i, LLVMBool b) {
-	unwrap<GetElementPtrInst>(i)->setIsInBounds(b);
-}
-
 LLVMAtomicRMWOperation LLVM_General_GetAtomicRMWOperation(LLVMValueRef i) {
 	return wrap(unwrap<AtomicRMWInst>(i)->getOperation());
 }
