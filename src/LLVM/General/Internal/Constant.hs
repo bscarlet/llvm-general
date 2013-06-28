@@ -26,7 +26,6 @@ import Foreign.Storable (Storable, sizeOf)
 import qualified LLVM.General.Internal.FFI.Constant as FFI
 import qualified LLVM.General.Internal.FFI.GlobalValue as FFI
 import qualified LLVM.General.Internal.FFI.Instruction as FFI
-import qualified LLVM.General.Internal.FFI.LLVMCTypes as FFI
 import LLVM.General.Internal.FFI.LLVMCTypes (valueSubclassIdP)
 import qualified LLVM.General.Internal.FFI.PtrHierarchy as FFI
 import qualified LLVM.General.Internal.FFI.User as FFI
