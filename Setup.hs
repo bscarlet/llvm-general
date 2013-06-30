@@ -24,8 +24,8 @@ uncheckedHsFFIDefines = ["__STDC_LIMIT_MACROS"]
 
 llvmVersion = Version [3,3] []
 
-llvmConfigNames = [ "llvm-config"
-                  , "llvm-config-" ++ (intercalate "." . map show . versionBranch $ llvmVersion)
+llvmConfigNames = [ "llvm-config-" ++ (intercalate "." . map show . versionBranch $ llvmVersion)
+                  , "llvm-config"
                   ]
 
 llvmProgram = (simpleProgram "llvm-config")
