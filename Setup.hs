@@ -24,14 +24,22 @@ uncheckedHsFFIDefines = ["__STDC_LIMIT_MACROS"]
 
 llvmVersion = Version [3,3] []
 
+llvmConfigNames = [ "llvm-config"
+                  , "llvm-config-" ++ (intercalate "." . map show . versionBranch $ llvmVersion)
+                  ]
+
 llvmProgram = (simpleProgram "llvm-config")
-              { programFindLocation = \v -> do
-                  versioned <- findProgramLocation v ("llvm-config" ++ (intercalate "." . map show . versionBranch $ llvmVersion))
-                  case versioned of
-                    Just p -> return (Just p)
-                    Nothing -> findProgramLocation v "llvm-config"
+              { programFindLocation = \v -> findJustBy (findProgramLocation v) llvmConfigNames
               , programFindVersion = \v p -> findProgramVersion "--version" id v p
               }
+
+findJustBy :: Monad m => (a -> m (Maybe b)) -> [a] -> m (Maybe b)
+findJustBy f [] = return Nothing
+findJustBy f (x:xs) = do
+  x' <- f x
+  case x' of
+    j@(Just _) -> return j
+    Nothing -> findJustBy f xs
 
 main = do
   let (ldLibraryPathVar, ldLibraryPathSep) = 
