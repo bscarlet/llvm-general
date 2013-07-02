@@ -1,5 +1,5 @@
 name: llvm-general
-version: 3.3.0.7
+version: 3.3.1.0
 license: BSD3
 license-file: LICENSE
 author: Benjamin S.Scarlet <fgthb0@greynode.net>
@@ -34,7 +34,7 @@ source-repository this
   type: git
   location: git://github.com/bscarlet/llvm-general.git
   branch: llvm-3.3
-  tag: v3.3.0.7
+  tag: v3.3.1.0
 
 flag shared-llvm
   description: link against llvm shared rather than static library
