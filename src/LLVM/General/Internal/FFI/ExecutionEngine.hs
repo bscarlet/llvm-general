@@ -42,6 +42,3 @@ foreign import ccall unsafe "LLVMLinkInInterpreter" linkInInterpreter ::
 
 foreign import ccall unsafe "LLVMLinkInJIT" linkInJIT :: 
   IO ()
-
-foreign import ccall unsafe "LLVMLinkInMCJIT" linkInMCJIT :: 
-  IO ()
