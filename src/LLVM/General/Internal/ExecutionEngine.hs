@@ -19,13 +19,12 @@ import Foreign.Marshal.Alloc (free)
 
 import qualified LLVM.General.Internal.FFI.PtrHierarchy as FFI
 import qualified LLVM.General.Internal.FFI.ExecutionEngine as FFI
-import qualified LLVM.General.Internal.FFI.Target as FFI
 import qualified LLVM.General.Internal.FFI.Module as FFI
 
 import LLVM.General.Internal.Module
 import LLVM.General.Internal.Context
 import LLVM.General.Internal.Coding
-import LLVM.General.Internal.Target ()
+import LLVM.General.Internal.Target
 import qualified LLVM.General.AST as A
 
 removeModule :: Ptr FFI.ExecutionEngine -> Ptr FFI.Module -> IO ()
@@ -64,8 +63,7 @@ withExecutionEngine ::
   (Ptr FFI.ExecutionEngine -> IO a) ->
   IO a
 withExecutionEngine c m createEngine f = flip runAnyContT return $ do
-  failure <- decodeM =<< liftIO FFI.initializeNativeTarget
-  when failure $ fail "native target initializaiton failed"
+  liftIO initializeNativeTarget
   outExecutionEngine <- alloca
   outErrorCStringPtr <- alloca
   Module dummyModule <- maybe (anyContT $ liftM (either undefined id)
