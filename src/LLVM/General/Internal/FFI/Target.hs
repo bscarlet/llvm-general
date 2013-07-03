@@ -3,13 +3,13 @@
   GeneralizedNewtypeDeriving,
   EmptyDataDecls
   #-}
-
 module LLVM.General.Internal.FFI.Target where
 
 import Foreign.Ptr
 import Foreign.C
 
 import LLVM.General.Internal.FFI.LLVMCTypes
+import LLVM.General.Internal.FFI.Module
 
 data Target
 
@@ -61,25 +61,29 @@ foreign import ccall unsafe "LLVM_General_GetSSPBufferSize" getSSPBufferSize ::
   Ptr TargetOptions -> IO CUInt
 
 foreign import ccall unsafe "LLVM_General_DisposeTargetOptions" disposeTargetOptions ::
-    Ptr TargetOptions -> IO ()
+  Ptr TargetOptions -> IO ()
 
 data TargetMachine
 
 foreign import ccall unsafe "LLVM_General_CreateTargetMachine" createTargetMachine ::
-    Ptr Target
-    -> CString 
-    -> CString
-    -> CString
-    -> Ptr TargetOptions
-    -> RelocModel
-    -> CodeModel
-    -> CodeGenOptLevel
-    -> IO (Ptr TargetMachine)
+  Ptr Target
+  -> CString 
+  -> CString
+  -> CString
+  -> Ptr TargetOptions
+  -> RelocModel
+  -> CodeModel
+  -> CodeGenOptLevel
+  -> IO (Ptr TargetMachine)
 
 foreign import ccall unsafe "LLVMDisposeTargetMachine" disposeTargetMachine ::
-    Ptr TargetMachine -> IO ()
+  Ptr TargetMachine -> IO ()
+
+foreign import ccall unsafe "LLVMTargetMachineEmitToFile" targetMachineEmitToFile ::
+  Ptr TargetMachine -> Ptr Module -> CString -> CodeGenFileType -> Ptr CString -> IO LLVMBool
 
 data TargetLowering
 
 foreign import ccall unsafe "LLVM_General_GetTargetLowering" getTargetLowering ::
-    Ptr TargetMachine -> IO (Ptr TargetLowering)
+  Ptr TargetMachine -> IO (Ptr TargetLowering)
+

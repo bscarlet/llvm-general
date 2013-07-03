@@ -13,6 +13,7 @@ import Data.Functor
 import LLVM.General.Context
 import LLVM.General.Module
 import LLVM.General.Diagnostic
+import LLVM.General.Target
 import LLVM.General.AST
 import LLVM.General.AST.AddrSpace
 import qualified LLVM.General.AST.IntegerPredicate as IPred
@@ -23,6 +24,10 @@ import qualified LLVM.General.AST.CallingConvention as CC
 import qualified LLVM.General.AST.Attribute as A
 import qualified LLVM.General.AST.Global as G
 import qualified LLVM.General.AST.Constant as C
+
+import qualified LLVM.General.Relocation as R
+import qualified LLVM.General.CodeModel as CM
+import qualified LLVM.General.CodeGenOpt as CGO
 
 handString = "; ModuleID = '<string>'\n\
     \\n\

@@ -4,9 +4,12 @@ module LLVM.General.Module (
     Module,
     withModuleFromAST,
     moduleAST,
-    writeBitcodeToFile,
     withModuleFromString,
-    moduleString
+    moduleString,
+
+    writeBitcodeToFile,
+    writeAssemblyToFile,
+    writeObjectToFile
   ) where
 
 import LLVM.General.Internal.Module
