@@ -99,9 +99,6 @@ instance EncodeM EncodeAST A.Constant (Ptr FFI.Constant) where
       p <- encodeM p
       ms <- encodeM ms
       liftIO $ FFI.constStructInContext context ms p
-    A.C.Undef ty -> do
-      ty' <- encodeM ty
-      liftIO $ FFI.getUndef ty'
     o -> $(do
       let constExprInfo =  ID.outerJoin ID.astConstantRecs (ID.innerJoin ID.astInstructionRecs ID.instructionDefs)
       TH.caseE [| o |] $ do
@@ -117,7 +114,7 @@ instance EncodeM EncodeAST A.Constant (Ptr FFI.Constant) where
               ID.Binary -> return [| $(coreCall "BinaryOperator") $(opcode) |]
               ID.Cast -> return [| $(coreCall "Cast") $(opcode) |]
               _ -> return $ coreCall name
-          Nothing -> if (name `elem` ["Vector", "Null", "Array"]) 
+          Nothing -> if (name `elem` ["Vector", "Null", "Array", "Undef"])
                       then return $ coreCall name
                       else []
         return $ TH.match
