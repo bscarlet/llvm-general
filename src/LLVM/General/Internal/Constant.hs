@@ -99,6 +99,9 @@ instance EncodeM EncodeAST A.Constant (Ptr FFI.Constant) where
       p <- encodeM p
       ms <- encodeM ms
       liftIO $ FFI.constStructInContext context ms p
+    A.C.Undef ty -> do
+      ty' <- encodeM ty
+      liftIO $ FFI.getUndef ty'
     o -> $(do
       let constExprInfo =  ID.outerJoin ID.astConstantRecs (ID.innerJoin ID.astInstructionRecs ID.instructionDefs)
       TH.caseE [| o |] $ do
