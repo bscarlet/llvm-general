@@ -6,6 +6,7 @@ import Test.HUnit
 
 import LLVM.General.Test.Support
 
+import Control.Monad.Error
 import Data.Bits
 import Data.Word
 import Data.Functor
@@ -218,8 +219,8 @@ tests = testGroup "Module" [
     ast @?= handAST,
     
   testCase "withModuleFromAST" $ withContext $ \context -> do
-   s <- withModuleFromAST context handAST moduleString
-   s @?= Right handString,
+   s <- withModuleFromAST' context handAST moduleString
+   s @?= handString,
 
   testCase "triple" $ withContext $ \context -> do
    let hAST = "; ModuleID = '<string>'\n\
@@ -252,8 +253,8 @@ tests = testGroup "Module" [
               )
             ]
            ]
-      t <- withModuleFromAST context ast $ \_ -> return True
-      t @?= Right True,
+      t <- withModuleFromAST' context ast $ \_ -> return True
+      t @?= True,
 
     testCase "Phi node finishes" $ withContext $ \context -> do
       let ast = Module "<string>" Nothing Nothing [
@@ -332,8 +333,8 @@ tests = testGroup "Module" [
                   ]
                 }
                ]
-          Right s <- withModuleFromAST context ast moduleString
-          Right m <- withModuleFromString context s moduleAST
+          s <- withModuleFromAST' context ast moduleString
+          m <- withModuleFromString' context s moduleAST
           m @?= ast
    ],
         
@@ -362,7 +363,7 @@ tests = testGroup "Module" [
               )
             ]
            ]
-      t <- withModuleFromAST context badAST $ \_ -> return True
+      t <- runErrorT $ withModuleFromAST context badAST $ \_ -> return True
       t @?= Left "reference to undefined block: Name \"not here\""
    ]
  ]
