@@ -11,6 +11,8 @@ import Foreign.C (CString, CChar)
 import Foreign.Ptr
 import Control.Monad.AnyCont
 import Control.Monad.IO.Class
+import Foreign.Storable (Storable)
+import Foreign.Marshal.Alloc as F.M (alloca)
 
 import LLVM.General.Internal.Coding
 
@@ -23,7 +25,7 @@ newtype UTF8ByteString = UTF8ByteString { utf8Bytes :: BS.ByteString }
 instance (Monad e) => EncodeM e String UTF8ByteString where
   encodeM = return . UTF8ByteString . T.encodeUtf8 . T.pack
 
-instance (MonadIO d) => DecodeM d String UTF8ByteString where
+instance (Monad d) => DecodeM d String UTF8ByteString where
   decodeM = return . T.unpack . T.decodeUtf8 . utf8Bytes
 
 
@@ -38,3 +40,6 @@ instance (MonadIO d) => DecodeM d String CString where
 
 instance (Integral i, MonadIO d) => DecodeM d String (Ptr CChar, i) where
   decodeM = decodeM . UTF8ByteString <=< liftIO . BS.packCStringLen . second fromIntegral
+
+instance (Integral i, Storable i, MonadIO d) => DecodeM d String (Ptr i -> IO (Ptr CChar)) where
+  decodeM f = decodeM =<< (liftIO $ F.M.alloca $ \p -> (,) `liftM` f p `ap` peek p)

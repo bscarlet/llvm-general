@@ -77,16 +77,14 @@ writeBitcodeToFile path (Module m) = flip runAnyContT return $ do
   msgPtr <- alloca
   path <- encodeM path
   result <- decodeM =<< (liftIO $ FFI.writeBitcodeToFile m path msgPtr)
-  when result $ do
-    msg <- anyContT $ bracket (peek msgPtr) free
-    fail =<< decodeM msg
+  when result $ fail =<< (decodeM =<< (anyContToM $ bracket (peek msgPtr) free))
 
 emitToFile :: FFI.CodeGenFileType -> TargetMachine -> FilePath -> Module -> IO ()
 emitToFile fileType (TargetMachine tm) path (Module m) = flip runAnyContT return $ do
   msgPtr <- alloca
   path <- encodeM path
   result <- decodeM =<< (liftIO $ FFI.targetMachineEmitToFile tm m path fileType msgPtr)
-  when result $ fail =<< decodeM =<< anyContT (bracket (peek msgPtr) free)
+  when result $ fail =<< decodeM =<< anyContToM (bracket (peek msgPtr) free)
 
 writeAssemblyToFile :: TargetMachine -> FilePath -> Module -> IO ()
 writeAssemblyToFile = emitToFile FFI.codeGenFileTypeAssembly
@@ -207,8 +205,10 @@ withModuleFromAST context@(Context c) (A.Module moduleId dataLayout triple defin
                 defineLocal n p
                 n <- encodeM n
                 liftIO $ FFI.setValueName (FFI.upCast p) n
-                attrs <- encodeM attrs
-                liftIO $ FFI.addAttribute p attrs
+                unless (null attrs) $
+                       do attrs <- encodeM attrs
+                          liftIO $ FFI.addAttribute p attrs
+                          return ()
                 return ()
               finishInstrs <- forM blocks $ \(A.BasicBlock bName namedInstrs term) -> do
                 b <- encodeM bName
@@ -311,11 +311,8 @@ moduleAST (Module mod) = runDecodeAST $ do
               n <- liftIO $ FFI.getNamedMetadataNumOperands nm
               os <- allocaArray n
               liftIO $ FFI.getNamedMetadataOperands nm os
-              l <- alloca
-              cs <- liftIO $ FFI.getNamedMetadataName nm l
-              l <- peek l
               return A.NamedMetadataDefinition
-                 `ap` decodeM (cs, l)
+                 `ap` (decodeM $ FFI.getNamedMetadataName nm)
                  `ap` liftM (map (\(A.MetadataNodeReference mid) -> mid)) (decodeM (n, os))
          
        mds <- getMetadataDefinitions
