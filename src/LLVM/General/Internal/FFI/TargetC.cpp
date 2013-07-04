@@ -1,9 +1,13 @@
 #define __STDC_LIMIT_MACROS
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/FormattedStream.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/ExecutionEngine/Interpreter.h"
+#include "llvm/PassManager.h"
+#include "llvm/IR/Module.h"
 #include "llvm-c/Target.h"
 #include "llvm-c/TargetMachine.h"
 #include "llvm-c/Core.h"
@@ -208,6 +212,29 @@ LLVMTargetMachineRef LLVM_General_CreateTargetMachine(
 	
 const TargetLowering *LLVM_General_GetTargetLowering(LLVMTargetMachineRef t) {
 	return unwrap(t)->getTargetLowering();
+}
+
+LLVMBool LLVM_General_WriteObjectToFile(LLVMTargetMachineRef targetMachine, LLVMModuleRef module, const char *path, LLVMBool assemble, LLVMBool verify, char **error) {
+  std::string ErrorInfo;
+  raw_fd_ostream rawOut(path, ErrorInfo, raw_fd_ostream::F_Binary);
+  llvm::formatted_raw_ostream out(rawOut);
+
+  if (!ErrorInfo.empty()) {
+    *error = strdup(ErrorInfo.c_str());
+    return -1;
+  }
+
+  PassManager pm;
+  TargetMachine *tm = unwrap(targetMachine);
+
+  if(tm->addPassesToEmitFile(pm, out, assemble ? TargetMachine::CGFT_ObjectFile : TargetMachine::CGFT_AssemblyFile, !assemble)) {
+    *error = strdup("Failed to add file emit passes");
+    return -1;
+  }
+
+  pm.run(*unwrap(module));
+
+  return 0;
 }
 
 }

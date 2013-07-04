@@ -6,7 +6,8 @@ module LLVM.General.Target (
    TargetOptions,
    withTargetOptions, peekTargetOptions, pokeTargetOptions,
    withTargetMachine,
-   getTargetLowering
+   getTargetLowering,
+   writeObjectToFile
  ) where
 
 import LLVM.General.Internal.Target

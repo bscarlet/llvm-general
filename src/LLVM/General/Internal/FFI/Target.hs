@@ -6,6 +6,8 @@
 
 module LLVM.General.Internal.FFI.Target where
 
+import LLVM.General.Internal.FFI.Module
+
 import Foreign.Ptr
 import Foreign.C
 
@@ -83,3 +85,6 @@ data TargetLowering
 
 foreign import ccall unsafe "LLVM_General_GetTargetLowering" getTargetLowering ::
     Ptr TargetMachine -> IO (Ptr TargetLowering)
+
+foreign import ccall unsafe "LLVM_General_WriteObjectToFile" writeObjectToFile ::
+    Ptr TargetMachine -> Ptr Module -> CString -> LLVMBool -> LLVMBool -> Ptr CString -> IO LLVMBool
