@@ -207,7 +207,7 @@ withTargetMachine
   relocModel <- encodeM relocModel
   codeModel <- encodeM codeModel
   codeGenOptLevel <- encodeM codeGenOptLevel
-  anyContT $ bracket (
+  anyContToM $ bracket (
       FFI.createTargetMachine
          target
          triple
