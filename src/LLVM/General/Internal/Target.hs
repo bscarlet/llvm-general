@@ -18,6 +18,7 @@ import Foreign.Marshal.Alloc (free)
 
 import LLVM.General.Internal.Coding
 import LLVM.General.Internal.String ()
+import LLVM.General.Internal.Module
 
 import qualified LLVM.General.Internal.FFI.LLVMCTypes as FFI
 import qualified LLVM.General.Internal.FFI.Target as FFI
@@ -232,3 +233,18 @@ initializeNativeTarget :: IO ()
 initializeNativeTarget = do
   failure <- decodeM =<< liftIO FFI.initializeNativeTarget
   when failure $ fail "native target initialization failed"
+
+-- | Generate and write out object code for a 'Module'
+writeObjectToFile :: TargetMachine -> Module -> FilePath
+                  -> Bool -- ^ generate an object file instead of textual assembly
+                  -> Bool -- ^ verify module first
+                  -> IO ()
+writeObjectToFile (TargetMachine tm) (Module m) path assemble verify = flip runAnyContT return $ do
+  path' <- encodeM path
+  assemble' <- encodeM assemble
+  verify' <- encodeM verify
+  msgPtr <- alloca
+  result <- decodeM =<< (liftIO $ FFI.writeObjectToFile tm m path' assemble' verify' msgPtr)
+  when result $ do
+    msg <- anyContT $ bracket (peek msgPtr) free
+    fail =<< decodeM msg
