@@ -6,12 +6,15 @@ module LLVM.General.Internal.String where
 
 import Control.Arrow
 import Control.Monad
-import Foreign.C (CString, CChar)
-import Foreign.Ptr
 import Control.Monad.AnyCont
 import Control.Monad.IO.Class
+import Control.Exception (finally)
+import Foreign.C (CString, CChar)
+import Foreign.Ptr
 import Foreign.Storable (Storable)
-import Foreign.Marshal.Alloc as F.M (alloca)
+import Foreign.Marshal.Alloc as F.M (alloca, free)
+
+import LLVM.General.Internal.FFI.LLVMCTypes
 
 import LLVM.General.Internal.Coding
 
@@ -36,6 +39,9 @@ instance (Integral i, MonadAnyCont IO e) => EncodeM e String (Ptr CChar, i) wher
 
 instance (MonadIO d) => DecodeM d String CString where
   decodeM = decodeM . UTF8ByteString <=< liftIO . BS.packCString
+
+instance (MonadIO d) => DecodeM d String MallocedCString where
+  decodeM (MallocedCString s) = liftIO $ finally (decodeM s) (free s)
 
 instance (Integral i, MonadIO d) => DecodeM d String (Ptr CChar, i) where
   decodeM = decodeM . UTF8ByteString <=< liftIO . BS.packCStringLen . second fromIntegral

@@ -50,6 +50,9 @@ deriving instance Data CUInt
 
 newtype LLVMBool = LLVMBool CUInt
 
+newtype MallocedCString = MallocedCString CString
+  deriving (Storable)
+
 newtype CPPOpcode = CPPOpcode CUInt
   deriving (Eq, Ord, Show, Typeable, Data)
 

@@ -13,13 +13,12 @@ import Control.Monad.Error
 
 import Data.Word
 import Foreign.Ptr
-import Foreign.C.String (CString)
 import Foreign.C.Types (CUInt)
-import Foreign.Marshal.Alloc (free)
 
 import qualified LLVM.General.Internal.FFI.PtrHierarchy as FFI
 import qualified LLVM.General.Internal.FFI.ExecutionEngine as FFI
 import qualified LLVM.General.Internal.FFI.Module as FFI
+import qualified LLVM.General.Internal.FFI.LLVMCTypes as FFI
 
 import LLVM.General.Internal.Module
 import LLVM.General.Internal.Context
@@ -59,7 +58,7 @@ instance ExecutionEngine (Ptr FFI.ExecutionEngine) (FunPtr ()) where
 withExecutionEngine :: 
   Context ->
   Maybe (Ptr FFI.Module) -> 
-  (Ptr (Ptr FFI.ExecutionEngine) -> Ptr FFI.Module -> Ptr CString -> IO CUInt) ->
+  (Ptr (Ptr FFI.ExecutionEngine) -> Ptr FFI.Module -> Ptr FFI.MallocedCString -> IO CUInt) ->
   (Ptr FFI.ExecutionEngine -> IO a) ->
   IO a
 withExecutionEngine c m createEngine f = flip runAnyContT return $ do
@@ -70,9 +69,7 @@ withExecutionEngine c m createEngine f = flip runAnyContT return $ do
                                    . withModuleFromAST c (A.Module "" Nothing Nothing []))
                         (return . Module) m
   r <- liftIO $ createEngine outExecutionEngine dummyModule outErrorCStringPtr
-  when (r /= 0) $ do
-    s <- anyContToM $ bracket (peek outErrorCStringPtr) free
-    fail =<< decodeM s
+  when (r /= 0) $ fail =<< decodeM =<< peek outErrorCStringPtr
   executionEngine <- anyContToM $ bracket (peek outExecutionEngine) FFI.disposeExecutionEngine
   liftIO $ removeModule executionEngine dummyModule
   liftIO $ f executionEngine
