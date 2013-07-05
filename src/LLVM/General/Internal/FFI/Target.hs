@@ -90,3 +90,12 @@ data TargetLowering
 foreign import ccall unsafe "LLVM_General_GetTargetLowering" getTargetLowering ::
   Ptr TargetMachine -> IO (Ptr TargetLowering)
 
+foreign import ccall unsafe "LLVM_General_GetDefaultTargetTriple" getDefaultTargetTriple :: IO CString
+foreign import ccall unsafe "LLVM_General_GetProcessTargetTriple" getProcessTargetTriple :: IO CString
+foreign import ccall unsafe "LLVM_General_GetHostCPUName" getHostCPUName :: IO CString
+foreign import ccall unsafe "LLVM_General_GetHostCPUFeatures" getHostCPUFeatures :: IO CString
+
+foreign import ccall unsafe "LLVM_General_GetTargetMachineDataLayout" getTargetMachineDataLayout ::
+  Ptr TargetMachine -> IO CString
+
+foreign import ccall unsafe "LLVM_General_InitializeAllTargets" initializeAllTargets :: IO ()
