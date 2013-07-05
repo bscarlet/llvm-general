@@ -76,14 +76,14 @@ writeBitcodeToFile path (Module m) = flip runAnyContT return $ do
   msgPtr <- alloca
   path <- encodeM path
   result <- decodeM =<< (liftIO $ FFI.writeBitcodeToFile m path msgPtr)
-  when result $ fail =<< decodeM =<< peek msgPtr
+  when result $ fail =<< decodeM msgPtr
 
 emitToFile :: FFI.CodeGenFileType -> TargetMachine -> FilePath -> Module -> ErrorT String IO ()
 emitToFile fileType (TargetMachine tm) path (Module m) = flip runAnyContT return $ do
   msgPtr <- alloca
   path <- encodeM path
   result <- decodeM =<< (liftIO $ FFI.targetMachineEmitToFile tm m path fileType msgPtr)
-  when result $ fail =<< decodeM =<< peek msgPtr
+  when result $ fail =<< decodeM msgPtr
 
 -- | write target-specific assembly directly into a file
 writeAssemblyToFile :: TargetMachine -> FilePath -> Module -> ErrorT String IO ()
