@@ -11,6 +11,8 @@ import Data.Bits
 import Data.Word
 import Data.Functor
 
+import qualified Data.Set as Set
+
 import LLVM.General.Context
 import LLVM.General.Module
 import LLVM.General.Diagnostic
