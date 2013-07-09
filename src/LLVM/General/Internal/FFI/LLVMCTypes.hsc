@@ -17,6 +17,7 @@ module LLVM.General.Internal.FFI.LLVMCTypes where
 #include "LLVM/General/Internal/FFI/Function.h"
 #include "LLVM/General/Internal/FFI/GlobalValue.h"
 #include "LLVM/General/Internal/FFI/Type.h"
+#include "LLVM/General/Internal/FFI/Analysis.h"
 
 import Language.Haskell.TH.Quote
 
@@ -184,3 +185,8 @@ newtype FunctionAttr = FunctionAttr CUInt
   deriving (Eq, Read, Show, Bits, Typeable, Data, Num)
 #define FA_Rec(n,a) { #n, LLVM ## n ## a },
 #{inject FUNCTION_ATTR, FunctionAttr, FunctionAttr, functionAttr, FA_Rec}
+
+newtype VerifierFailureAction = VerifierFailureAction CUInt
+  deriving (Eq, Read, Show, Bits, Typeable, Data, Num)
+#define VFA_Rec(n) { #n, LLVM ## n ## Action },
+#{inject VERIFIER_FAILURE_ACTION, VerifierFailureAction, VerifierFailureAction, verifierFailureAction, VFA_Rec}
