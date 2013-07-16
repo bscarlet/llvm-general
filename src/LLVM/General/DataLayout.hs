@@ -1,11 +1,15 @@
 -- | <http://llvm.org/docs/LangRef.html#data-layout>
-module LLVM.General.AST.DataLayout
+-- Most functions in this module return 'Maybe'. This is because not all 'Type's are representable in memory (consider 'VoidType' and 'MetadataType'), and 'DataLayout's do not contain information for all types representable in LLVM IR. For example, most 'DataLayout's do not describe pointer types having address spaces other than zero, or floating point types unsupported by the target.
+-- 'NamedTypeReference's cannot be resolved by these functions and will generally produce 'Nothing'.
+module LLVM.General.DataLayout
     ( typeSizeInBits,
       typeAllocSize, typeAllocSizeInBits,
       typeStoreSize, typeStoreSizeInBits,
-      typeAlignment
+      typeABIAlignment, typePreferredAlignment,
+      pointerSize, intPtrType
     ) where
 
+import Data.Word
 import Data.Bits
 import Control.Applicative
 import Control.Monad
@@ -15,9 +19,9 @@ import qualified Data.Map as Map
 
 import LLVM.General.AST.DataLayout
 import LLVM.General.AST.Type
+import LLVM.General.AST.AddrSpace
 
 -- | The number of bits necessary to represent in memory a particular 'Type' under a particular 'DataLayout'.
--- | Not all types are representable in memory, and 'DataLayout's do not contain information for all potentially representable types.
 typeSizeInBits :: DataLayout -> Type -> Maybe Word
 typeSizeInBits _ (IntegerType { typeBits = bits }) = Just (fromIntegral bits)
 typeSizeInBits l (PointerType { pointerAddrSpace = addrSpace }) =
@@ -107,9 +111,25 @@ typeAlignment _ _ VoidType = Nothing
 typeAlignment _ _ (NamedTypeReference _) = Nothing
 typeAlignment _ _ MetadataType = Nothing
 
+-- | The minimum boundary on which memory representing a value of a particular 'Type' must be aligned
+typeABIAlignment :: DataLayout -> Type -> Maybe Word
+typeABIAlignment = typeAlignment True
+
+-- | The boundary on which memory representing a value of a particular 'Type' should be aligned for most efficient access
+typePreferredAlignment :: DataLayout -> Type -> Maybe Word
+typePreferredAlignment = typeAlignment False
+
 -- | Lookup helper for typeAlignment
 alignmentInfo :: AlignType -> Bool -> DataLayout -> Word32 -> Maybe Word
 alignmentInfo alignTy isABI l bits = do
   AlignmentInfo { abiAlignment = abi, preferredAlignment = pref } <-
       Map.lookup (alignTy, bits) . typeLayouts $ l
   fromIntegral <$> if isABI then return abi else pref `mplus` return abi
+
+-- | Convenience function for 'typeSizeInBits' on a 'PointerType' of a particular address space
+pointerSize :: DataLayout -> AddrSpace -> Maybe Word
+pointerSize layout addrSpace = typeSizeInBits layout (PointerType (IntegerType 8) addrSpace)
+
+-- | An integer type of the same size as a pointer in the given address space
+intPtrType :: DataLayout -> AddrSpace -> Maybe Type
+intPtrType layout addrSpace = IntegerType . fromIntegral <$> pointerSize layout addrSpace
