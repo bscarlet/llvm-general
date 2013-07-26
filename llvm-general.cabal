@@ -1,5 +1,5 @@
 name: llvm-general
-version: 3.3.4.4
+version: 3.3.4.5
 license: BSD3
 license-file: LICENSE
 author: Benjamin S.Scarlet <fgthb0@greynode.net>
@@ -16,7 +16,7 @@ description:
 	handles almost all of the stateful complexities of using the LLVM API to build IR; and it supports moving IR not
 	only from Haskell into LLVM C++ objects, but the other direction - from LLVM C++ into Haskell.
   .
-  For haddock, see <http://bscarlet.github.io/llvm-general/3.3.4.4/doc/html/llvm-general/index.html>.
+  For haddock, see <http://bscarlet.github.io/llvm-general/3.3.4.5/doc/html/llvm-general/index.html>.
 extra-source-files:
   src/LLVM/General/Internal/FFI/Analysis.h
   src/LLVM/General/Internal/FFI/Constant.h
@@ -37,7 +37,7 @@ source-repository this
   type: git
   location: git://github.com/bscarlet/llvm-general.git
   branch: llvm-3.3
-  tag: v3.3.4.4
+  tag: v3.3.4.5
 
 flag shared-llvm
   description: link against llvm shared rather than static library
