@@ -5,7 +5,6 @@
 module LLVM.General.Transforms where
 
 import Data.Data
-import Data.Int
 import Data.Word
 
 -- | <http://llvm.org/docs/Passes.html#transform-passes>
@@ -38,7 +37,7 @@ data Pass
   | LoopRotate
   -- | can use a 'LLVM.General.Target.TargetLowering'
   | LoopStrengthReduce
-  | LoopUnroll { loopUnrollThreshold :: Int32, count :: Int32, allowPartial :: Int32 }
+  | LoopUnroll { loopUnrollThreshold :: Maybe Word, count :: Maybe Word, allowPartial :: Maybe Bool }
   | LoopUnswitch { optimizeForSize :: Bool }
   | LowerAtomic
   -- | can use a 'LLVM.General.Target.TargetLowering'
@@ -50,11 +49,11 @@ data Pass
   | Reassociate
   | ScalarReplacementOfAggregates { requiresDominatorTree :: Bool }
   | OldScalarReplacementOfAggregates { 
-      oldScalarReplacementOfAggregatesThreshold :: Int32, 
+      oldScalarReplacementOfAggregatesThreshold :: Maybe Word, 
       useDominatorTree :: Bool, 
-      structMemberThreshold :: Int32,
-      arrayElementThreshold :: Int32,
-      scalarLoadThreshold :: Int32
+      structMemberThreshold :: Maybe Word,
+      arrayElementThreshold :: Maybe Word,
+      scalarLoadThreshold :: Maybe Word
     }
   | SparseConditionalConstantPropagation
   | SimplifyLibCalls
@@ -68,7 +67,7 @@ data Pass
   | ConstantMerge
   | FunctionAttributes
   | FunctionInlining { 
-      functionInliningThreshold :: Int32
+      functionInliningThreshold :: Word
     }
   | GlobalDeadCodeElimination
   | InternalizeFunctions { exportList :: [String] }
@@ -84,7 +83,7 @@ data Pass
 
   -- here begin the vectorization passes
   | BasicBlockVectorize { 
-    vectorBits :: Word32,
+    vectorBits :: Word,
     vectorizeBools :: Bool,
     vectorizeInts :: Bool,
     vectorizeFloats :: Bool,
@@ -97,12 +96,12 @@ data Pass
     vectorizeGetElementPtr :: Bool,
     vectorizeMemoryOperations :: Bool,
     alignedOnly :: Bool,
-    requiredChainDepth :: Word32,
-    searchLimit :: Word32,
-    maxCandidatePairsForCycleCheck :: Word32,
+    requiredChainDepth :: Word,
+    searchLimit :: Word,
+    maxCandidatePairsForCycleCheck :: Word,
     splatBreaksChain :: Bool,
-    maxInstructions :: Word32,
-    maxIterations :: Word32,
+    maxInstructions :: Word,
+    maxIterations :: Word,
     powerOfTwoLengthsOnly :: Bool,
     noMemoryOperationBoost :: Bool,
     fastDependencyAnalysis :: Bool
