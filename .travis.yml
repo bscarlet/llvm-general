@@ -6,3 +6,7 @@ before_install:
   - sudo apt-get install -qq llvm-3.2
 install:
   - cabal install --only-dependencies --enable-tests --force-reinstall
+branches:
+  only:
+    - llvm-3.3
+    - llvm-3.2
