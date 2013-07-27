@@ -1,1 +1,3 @@
 language: haskell
+install:
+  - cabal install --only-dependencies --enable-tests --force-reinstall
