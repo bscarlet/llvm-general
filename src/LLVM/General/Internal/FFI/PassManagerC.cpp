@@ -1,5 +1,6 @@
 #define __STDC_LIMIT_MACROS
 #include "llvm/LLVMContext.h"
+#include "llvm/DataLayout.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Vectorize.h"
@@ -25,6 +26,10 @@ inline LLVMTargetLoweringRef wrap(const TargetLowering *P) {
 }
 
 extern "C" {
+
+void LLVM_General_AddDataLayoutPass(LLVMPassManagerRef PM, const char *dl) {
+	unwrap(PM)->add(new DataLayout(dl));
+}
 
 #define LLVM_GENERAL_FOR_EACH_PASS_WITHOUT_LLVM_C_BINDING(macro) \
 	macro(BlockPlacement)			\
