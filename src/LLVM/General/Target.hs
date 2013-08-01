@@ -11,6 +11,8 @@ module LLVM.General.Target (
    getTargetLowering,
    getDefaultTargetTriple, getHostCPUName, getHostCPUFeatures,
    getTargetMachineDataLayout, initializeNativeTarget, initializeAllTargets
+   TargetLibraryInfo,
+   withTargetLibraryInfo
  ) where
 
 import LLVM.General.Internal.Target

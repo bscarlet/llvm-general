@@ -3,6 +3,7 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetLibraryInfo.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/ExecutionEngine/Interpreter.h"
 #include "llvm/DataLayout.h"
@@ -14,6 +15,35 @@
 using namespace llvm;
 
 namespace llvm {
+// Taken from llvm/lib/Target/TargetMachineC.cpp
+static Target *unwrap(LLVMTargetRef P) {
+  return reinterpret_cast<Target*>(P);
+}
+// Taken from llvm/lib/Target/TargetMachineC.cpp
+static LLVMTargetRef wrap(const Target * P) {
+  return reinterpret_cast<LLVMTargetRef>(const_cast<Target*>(P));
+}
+// Taken from llvm/lib/Target/TargetMachineC.cpp
+inline TargetMachine *unwrap(LLVMTargetMachineRef P) {
+  return reinterpret_cast<TargetMachine*>(P);
+}
+// Taken from llvm/lib/Target/TargetMachineC.cpp
+inline LLVMTargetMachineRef wrap(const TargetMachine *P) {
+  return
+    reinterpret_cast<LLVMTargetMachineRef>(const_cast<TargetMachine*>(P));
+}
+
+// Taken from llvm/lib/Target/Target.cpp
+inline TargetLibraryInfo *unwrap(LLVMTargetLibraryInfoRef P) {
+  return reinterpret_cast<TargetLibraryInfo*>(P);
+}
+
+// Taken from llvm/lib/Target/Target.cpp
+inline LLVMTargetLibraryInfoRef wrap(const TargetLibraryInfo *P) {
+  TargetLibraryInfo *X = const_cast<TargetLibraryInfo*>(P);
+  return reinterpret_cast<LLVMTargetLibraryInfoRef>(X);
+}
+
 static Reloc::Model unwrap(LLVMRelocMode x) {
 	switch(x) {
 #define ENUM_CASE(x,y) case LLVMReloc ## x: return Reloc::y;
@@ -224,6 +254,16 @@ char *LLVM_General_GetHostCPUFeatures() {
 
 char *LLVM_General_GetTargetMachineDataLayout(LLVMTargetMachineRef t) {
 	return strdup(unwrap(t)->getDataLayout()->getStringRepresentation().c_str());
+}
+
+LLVMTargetLibraryInfoRef LLVM_General_CreateTargetLibraryInfo(
+	const char *triple
+) {
+	return wrap(new TargetLibraryInfo(Triple(triple)));
+}
+
+void LLVM_General_DisposeTargetLibraryInfo(LLVMTargetLibraryInfoRef l) {
+	delete unwrap(l);
 }
 
 void LLVM_General_InitializeAllTargets() {
