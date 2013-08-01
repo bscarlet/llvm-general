@@ -17,7 +17,6 @@ import qualified LLVM.General.Test.PrettyPrint as PrettyPrint
 import qualified LLVM.General.Test.Linking as Linking
 
 tests = testGroup "llvm-general" [
-{-
     Constants.tests,
     DataLayout.tests,
     ExecutionEngine.tests,
@@ -31,6 +30,5 @@ tests = testGroup "llvm-general" [
     Analysis.tests,
     PrettyPrint.tests,
     Linking.tests,
--}
     Instrumentation.tests
   ]
