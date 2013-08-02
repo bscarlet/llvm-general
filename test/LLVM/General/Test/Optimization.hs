@@ -93,9 +93,9 @@ handAST =
        ]
       ]
 
-optimize :: PassManagerSpecification s => s -> A.Module -> IO A.Module
-optimize s m = withContext $ \context -> withModuleFromAST' context m $ \mIn' -> do
-  withPassManager s $ \pm -> runPassManager pm mIn'
+optimize :: PassSetSpec -> A.Module -> IO A.Module
+optimize pss m = withContext $ \context -> withModuleFromAST' context m $ \mIn' -> do
+  withPassManager pss $ \pm -> runPassManager pm mIn'
   moduleAST mIn'
 
 tests = testGroup "Optimization" [
@@ -118,7 +118,7 @@ tests = testGroup "Optimization" [
 
   testGroup "individual" [
     testCase "ConstantPropagation" $ do
-      mOut <- optimize [ConstantPropagation] handAST
+      mOut <- optimize defaultPassSetSpec { transforms = [ConstantPropagation] } handAST
 
       mOut @?= Module "<string>" Nothing Nothing [
         GlobalDefinition $ Function L.External V.Default CC.C [] (IntegerType 32) (Name "foo") ([
@@ -210,14 +210,8 @@ tests = testGroup "Optimization" [
            ] (Do $ Ret (Just (LocalReference (Name "r"))) [])
           ]
          ]
-      mOut <- optimize [ 
-               defaultVectorizeBasicBlocks {
-                 vectorizePointers = False,
-                 requiredChainDepth = 3
-               },
-               InstructionCombining,
-               GlobalValueNumbering False
-              ] mIn
+      mOut <- 
+        optimize (defaultPassSetSpec { transforms = [ defaultVectorizeBasicBlocks { vectorizePointers = False, requiredChainDepth = 3 }, InstructionCombining, GlobalValueNumbering False ] }) mIn
       mOut @?= Module "<string>" Nothing Nothing [
        GlobalDefinition $ Function 
         L.External V.Default CC.C [] (FloatingPointType 64 IEEE) (Name "foo") ([
@@ -299,9 +293,9 @@ tests = testGroup "Optimization" [
         (target, _) <- failInIO $ lookupTarget Nothing triple
         withTargetOptions $ \targetOptions -> do
           withTargetMachine target triple "" Set.empty targetOptions
-                            R.Default CM.Default CGO.Default $ \targetMachine -> do
-            targetLowering <- getTargetLowering targetMachine
-            withPassManager ([LowerInvoke False], targetLowering) $ \passManager -> do
+                            R.Default CM.Default CGO.Default $ \tm -> do
+            tl <- getTargetLowering tm
+            withPassManager (defaultPassSetSpec { transforms = [LowerInvoke False], targetLowering = Just tl}) $ \passManager -> do
               let astIn = 
                     Module "<string>" Nothing Nothing [
                      GlobalDefinition $ Function L.External V.Default CC.C [] (IntegerType 32) (Name "foo") ([
