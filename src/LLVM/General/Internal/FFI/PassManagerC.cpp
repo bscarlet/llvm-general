@@ -210,7 +210,7 @@ void LLVM_General_AddBoundsCheckingPass(LLVMPassManagerRef PM) {
 	unwrap(PM)->add(createBoundsCheckingPass());
 }
 
-void LLVM_General_AddDebugIRPassEmittingSource(
+void LLVM_General_AddDebugGeneratedIRPass(
 	LLVMPassManagerRef PM,
 	LLVMBool hideDebugIntrinsics,
 	LLVMBool hideDebugMetadata,
@@ -227,7 +227,7 @@ void LLVM_General_AddDebugIRPassEmittingSource(
 	);
 }
 
-void LLVM_General_AddDebugIRPassInMemory(LLVMPassManagerRef PM) {
+void LLVM_General_AddDebugExistingIRPass(LLVMPassManagerRef PM) {
 	unwrap(PM)->add(createDebugIRPass());
 }
 
