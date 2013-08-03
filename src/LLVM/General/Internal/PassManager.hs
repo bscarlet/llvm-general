@@ -91,7 +91,7 @@ createPassManager pss = flip runAnyContT return $ do
         handleOption FFI.passManagerBuilderUseInlinerWithThreshold useInlinerWithThreshold
         FFI.passManagerBuilderPopulateModulePassManager b pm
     PassSetSpec ps dl tli tl' -> do
-      let tl = maybe nullPtr (\(TargetMachine tl) -> tl) tl'
+      let tl = maybe nullPtr (\(TargetLowering tl) -> tl) tl'
       forM_ tli $ \(TargetLibraryInfo tli) -> do
         liftIO $ FFI.addTargetLibraryInfoPass pm tli
       forM_ dl $ \dl -> liftIO $ withFFIDataLayout dl $ FFI.addDataLayoutPass pm 
@@ -111,7 +111,7 @@ createPassManager pss = flip runAnyContT return $ do
                      foldl1 TH.appE
                      (map TH.dyn $
                         ["FFI.add" ++ TH.nameBase n ++ "Pass", "pm"]
-                        ++ ["tl" | FFI.needsTargetMachine (TH.nameBase n)]
+                        ++ ["tl" | FFI.needsTargetLowering (TH.nameBase n)]
                         ++ fns)
                     )
                    |]
