@@ -135,9 +135,7 @@ tests = testGroup "Instrumentation" [
      ("AddressSanitizerModule", defaultAddressSanitizerModule),
      ("MemorySanitizer", defaultMemorySanitizer),
      ("ThreadSanitizer", defaultThreadSanitizer),
-     ("BoundsChecking", BoundsChecking),
---     ("DebugGeneratedIR", defaultDebugGeneratedIR),
-     ("DebugExistingIR", DebugExistingIR)
+     ("BoundsChecking", BoundsChecking)
     ]
    ]
  ]

@@ -139,13 +139,6 @@ data Pass
       blackListFile :: Maybe FilePath
     }
   | BoundsChecking
-  | DebugGeneratedIR {
-      hideDebugIntrinsics :: Bool,
-      hideDebugMetadata :: Bool,
-      fileName :: Maybe FilePath,
-      directory :: Maybe FilePath
-    }
-  | DebugExistingIR
   deriving (Eq, Ord, Read, Show, Typeable, Data)
 
 -- | Defaults for the 'BasicBlockVectorize' pass - copied from the C++ code to keep these defaults
@@ -210,11 +203,4 @@ defaultMemorySanitizer = MemorySanitizer {
 
 defaultThreadSanitizer = ThreadSanitizer {
   blackListFile = Nothing
-}
-
-defaultDebugGeneratedIR = DebugGeneratedIR {
-  hideDebugIntrinsics = False,
-  hideDebugMetadata = False,
-  fileName = Nothing,
-  directory = Nothing
 }

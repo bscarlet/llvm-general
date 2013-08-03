@@ -4,6 +4,7 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Vectorize.h"
+#include "llvm/Transforms/Instrumentation.h"
 #include "llvm/PassManager.h"
 
 #include "llvm-c/Core.h"
@@ -208,27 +209,6 @@ void LLVM_General_AddThreadSanitizerPass(
 
 void LLVM_General_AddBoundsCheckingPass(LLVMPassManagerRef PM) {
 	unwrap(PM)->add(createBoundsCheckingPass());
-}
-
-void LLVM_General_AddDebugGeneratedIRPass(
-	LLVMPassManagerRef PM,
-	LLVMBool hideDebugIntrinsics,
-	LLVMBool hideDebugMetadata,
-	const char *filename,
-	const char *directory
-) {
-	unwrap(PM)->add(
-		createDebugIRPass(
-			hideDebugIntrinsics,
-			hideDebugMetadata,
-			filename,
-			directory
-		)
-	);
-}
-
-void LLVM_General_AddDebugExistingIRPass(LLVMPassManagerRef PM) {
-	unwrap(PM)->add(createDebugIRPass());
 }
 
 }
