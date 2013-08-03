@@ -15,11 +15,11 @@ import Control.Monad.AnyCont
 
 import Data.Word
 import Data.Foldable (forM_)
-import Foreign.C (CString)
 import Foreign.Ptr
 
 import qualified LLVM.General.Internal.FFI.PassManager as FFI
 import qualified LLVM.General.Internal.FFI.Transforms as FFI
+import qualified LLVM.General.Internal.FFI.LLVMCTypes as FFI
 
 import LLVM.General.Internal.Module
 import LLVM.General.Internal.Target
@@ -74,8 +74,10 @@ defaultPassSetSpec = PassSetSpec {
   targetLowering = Nothing
 }
 
-instance (Monad m, MonadAnyCont IO m) => EncodeM m GCOVVersion CString where
-  encodeM (GCOVVersion cs@[_,_,_,_]) = encodeM cs
+instance (Monad m, MonadAnyCont IO m) => EncodeM m GCOVVersion FFI.LLVMBool where
+  encodeM (GCOVVersion "402*") = encodeM True
+  encodeM (GCOVVersion "404*") = encodeM False
+  encodeM s = fail $ "unsupported GCOVVersion: "++ show s ++ ". llvm-3.2 supports only \"402*\" and \"404*\""
 
 createPassManager :: PassSetSpec -> IO (Ptr FFI.PassManager)
 createPassManager pss = flip runAnyContT return $ do

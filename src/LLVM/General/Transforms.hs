@@ -116,29 +116,10 @@ data Pass
       emitNotes :: Bool,
       emitData :: Bool,
       version :: GCOVVersion, -- ^ see <http://gcc.gnu.org/viewcvs/gcc/trunk/gcc/gcov-io.h?view=markup>
-      useCfgChecksum :: Bool,
-      noRedZone :: Bool,
-      functionNamesInData :: Bool
+      useCfgChecksum :: Bool
     }
-  | AddressSanitizer {
-      checkInitOrder :: Bool,
-      checkUseAfterReturn :: Bool,
-      checkLifetime :: Bool,
-      blackListFile :: Maybe FilePath,
-      zeroBaseShadow :: Bool
-    }
-  | AddressSanitizerModule {
-      checkInitOrder :: Bool,
-      blackListFile :: Maybe FilePath,
-      zeroBaseShadow :: Bool
-    }
-  | MemorySanitizer {
-      trackOrigins :: Bool,
-      blackListFile :: Maybe FilePath
-    }
-  | ThreadSanitizer {
-      blackListFile :: Maybe FilePath
-    }
+  | AddressSanitizer
+  | ThreadSanitizer
   | BoundsChecking
   deriving (Eq, Ord, Read, Show, Typeable, Data)
 
@@ -178,30 +159,9 @@ defaultGCOVProfiler = GCOVProfiler {
     emitNotes = True,
     emitData = True,
     version = GCOVVersion "402*", 
-    useCfgChecksum = False,
-    noRedZone = False,
-    functionNamesInData = True
+    useCfgChecksum = False
   }
 
-defaultAddressSanitizer = AddressSanitizer {
-  checkInitOrder = True,
-  checkUseAfterReturn = False,
-  checkLifetime = False,
-  blackListFile = Nothing,
-  zeroBaseShadow = False
-}
+defaultAddressSanitizer = AddressSanitizer
 
-defaultAddressSanitizerModule = AddressSanitizerModule {
-  checkInitOrder = True,
-  blackListFile = Nothing,
-  zeroBaseShadow = False
-}
-
-defaultMemorySanitizer = MemorySanitizer {
-  trackOrigins = False,
-  blackListFile = Nothing
-}
-
-defaultThreadSanitizer = ThreadSanitizer {
-  blackListFile = Nothing
-}
+defaultThreadSanitizer = ThreadSanitizer

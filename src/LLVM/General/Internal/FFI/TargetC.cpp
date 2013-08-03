@@ -15,34 +15,6 @@
 using namespace llvm;
 
 namespace llvm {
-// Taken from llvm/lib/Target/TargetMachineC.cpp
-static Target *unwrap(LLVMTargetRef P) {
-  return reinterpret_cast<Target*>(P);
-}
-// Taken from llvm/lib/Target/TargetMachineC.cpp
-static LLVMTargetRef wrap(const Target * P) {
-  return reinterpret_cast<LLVMTargetRef>(const_cast<Target*>(P));
-}
-// Taken from llvm/lib/Target/TargetMachineC.cpp
-inline TargetMachine *unwrap(LLVMTargetMachineRef P) {
-  return reinterpret_cast<TargetMachine*>(P);
-}
-// Taken from llvm/lib/Target/TargetMachineC.cpp
-inline LLVMTargetMachineRef wrap(const TargetMachine *P) {
-  return
-    reinterpret_cast<LLVMTargetMachineRef>(const_cast<TargetMachine*>(P));
-}
-
-// Taken from llvm/lib/Target/Target.cpp
-inline TargetLibraryInfo *unwrap(LLVMTargetLibraryInfoRef P) {
-  return reinterpret_cast<TargetLibraryInfo*>(P);
-}
-
-// Taken from llvm/lib/Target/Target.cpp
-inline LLVMTargetLibraryInfoRef wrap(const TargetLibraryInfo *P) {
-  TargetLibraryInfo *X = const_cast<TargetLibraryInfo*>(P);
-  return reinterpret_cast<LLVMTargetLibraryInfoRef>(X);
-}
 
 static Reloc::Model unwrap(LLVMRelocMode x) {
 	switch(x) {

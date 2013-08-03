@@ -149,62 +149,26 @@ void LLVM_General_AddGCOVProfilerPass(
 	LLVMPassManagerRef PM,
 	LLVMBool emitNotes,
 	LLVMBool emitData,
-	const char *version,
-	LLVMBool useCfgChecksum,
-	LLVMBool noRedZone,
-	LLVMBool functionNamesInData
-) {
-	struct GCOVOptions options;
-	options.EmitNotes = emitNotes;
-	options.EmitData = emitData;
-	std::copy(version, version+4, options.Version);
-	options.UseCfgChecksum = useCfgChecksum;
-	options.NoRedZone = noRedZone;
-	options.FunctionNamesInData = functionNamesInData;
-	unwrap(PM)->add(createGCOVProfilerPass(options));
-}
-
-void LLVM_General_AddAddressSanitizerFunctionPass(
-	LLVMPassManagerRef PM,
-	LLVMBool checkInitOrder,
-	LLVMBool checkUseAfterReturn,
-	LLVMBool checkLifetime,
-	char *blacklistFile,
-	LLVMBool zeroBaseShadow
+	LLVMBool use402Format,
+	LLVMBool useCfgChecksum
 ) {
 	unwrap(PM)->add(
-		createAddressSanitizerFunctionPass(
-			checkInitOrder,
-			checkUseAfterReturn,
-			checkLifetime,
-			blacklistFile,
-			zeroBaseShadow
+		createGCOVProfilerPass(
+			emitNotes,
+			emitData,
+			use402Format,
+			useCfgChecksum
 		)
 	);
 }
 
-void LLVM_General_AddAddressSanitizerModulePass(
-	LLVMPassManagerRef PM,
-	LLVMBool checkInitOrder,
-	const char *blacklistFile,
-	bool zeroBaseShadow
-) {
-	unwrap(PM)->add(createAddressSanitizerModulePass(checkInitOrder, blacklistFile, zeroBaseShadow));
+void LLVM_General_AddAddressSanitizerFunctionPass(LLVMPassManagerRef PM) {
+	unwrap(PM)->add(createAddressSanitizerPass()
+	);
 }
 
-void LLVM_General_AddMemorySanitizerPass(
-	LLVMPassManagerRef PM,
-	LLVMBool trackOrigins,
-	const char *blacklistFile
-) {
-	unwrap(PM)->add(createMemorySanitizerPass(trackOrigins, blacklistFile));
-}
-
-void LLVM_General_AddThreadSanitizerPass(
-	LLVMPassManagerRef PM,
-	const char *blacklistFile
-) {
-	unwrap(PM)->add(createThreadSanitizerPass(blacklistFile));
+void LLVM_General_AddThreadSanitizerPass(LLVMPassManagerRef PM) {
+	unwrap(PM)->add(createThreadSanitizerPass());
 }
 
 void LLVM_General_AddBoundsCheckingPass(LLVMPassManagerRef PM) {

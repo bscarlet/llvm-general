@@ -119,7 +119,7 @@ ast = do
 tests = testGroup "Instrumentation" [
   testGroup "basic" [
     testCase n $ do
-      triple <- getProcessTargetTriple
+      triple <- getDefaultTargetTriple
       withTargetLibraryInfo triple $ \tli -> do
         Right dl <- runErrorT $ withDefaultTargetMachine getTargetMachineDataLayout
         Right ast <- runErrorT ast
@@ -132,8 +132,6 @@ tests = testGroup "Instrumentation" [
      ("PathProfiler", PathProfiler),
      ("GCOVProfiler", defaultGCOVProfiler),
      ("AddressSanitizer", defaultAddressSanitizer),
-     ("AddressSanitizerModule", defaultAddressSanitizerModule),
-     ("MemorySanitizer", defaultMemorySanitizer),
      ("ThreadSanitizer", defaultThreadSanitizer),
      ("BoundsChecking", BoundsChecking)
     ]
