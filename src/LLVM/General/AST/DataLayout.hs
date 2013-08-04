@@ -48,4 +48,3 @@ defaultDataLayout = DataLayout {
   typeLayouts = Map.empty,
   nativeSizes = Nothing
  }
-

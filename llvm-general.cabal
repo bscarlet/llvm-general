@@ -98,6 +98,7 @@ library
     LLVM.General.CodeModel
     LLVM.General.CommandLine
     LLVM.General.Context
+    LLVM.General.DataLayout
     LLVM.General.Diagnostic
     LLVM.General.ExecutionEngine
     LLVM.General.Module
