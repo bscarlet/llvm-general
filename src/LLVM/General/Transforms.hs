@@ -115,7 +115,7 @@ data Pass
   | GCOVProfiler {
       emitNotes :: Bool,
       emitData :: Bool,
-      version :: GCOVVersion, -- ^ see <http://gcc.gnu.org/viewcvs/gcc/trunk/gcc/gcov-io.h?view=markup>
+      version :: GCOVVersion,
       useCfgChecksum :: Bool
     }
   | AddressSanitizer
@@ -152,9 +152,11 @@ defaultVectorizeBasicBlocks = BasicBlockVectorize {
     fastDependencyAnalysis = False
   }
 
+-- | See <http://gcc.gnu.org/viewcvs/gcc/trunk/gcc/gcov-io.h?view=markup>.
 newtype GCOVVersion = GCOVVersion String
   deriving (Eq, Ord, Read, Show, Typeable, Data)
 
+-- | Defaults for 'GCOVProfiler'.
 defaultGCOVProfiler = GCOVProfiler {
     emitNotes = True,
     emitData = True,
@@ -162,6 +164,8 @@ defaultGCOVProfiler = GCOVProfiler {
     useCfgChecksum = False
   }
 
+-- | Defaults for 'AddressSanitizer'.
 defaultAddressSanitizer = AddressSanitizer
 
+-- | Defaults for 'ThreadSanitizer'.
 defaultThreadSanitizer = ThreadSanitizer
