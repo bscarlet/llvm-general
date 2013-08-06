@@ -149,7 +149,7 @@ void LLVM_General_AddGCOVProfilerPass(
 	LLVMPassManagerRef PM,
 	LLVMBool emitNotes,
 	LLVMBool emitData,
-	const char *version,
+	char version[4],
 	LLVMBool useCfgChecksum,
 	LLVMBool noRedZone,
 	LLVMBool functionNamesInData
