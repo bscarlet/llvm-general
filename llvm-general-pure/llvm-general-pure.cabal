@@ -1,5 +1,5 @@
 name: llvm-general-pure
-version: 3.2.6.2
+version: 3.2.7.0
 license: BSD3
 license-file: LICENSE
 author: Benjamin S.Scarlet <fgthb0@greynode.net>
@@ -76,7 +76,7 @@ test-suite test
     HUnit >= 1.2.4.2,
     test-framework-quickcheck2 >= 0.3.0.1,
     QuickCheck >= 2.5.1.1,
-    llvm-general-pure == 3.2.6.2,
+    llvm-general-pure == 3.2.7.0,
     containers >= 0.4.2.1,
     mtl >= 2.0.1.0
   hs-source-dirs: test
