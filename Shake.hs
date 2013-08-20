@@ -103,7 +103,7 @@ needStamps ls = need (map stamp ls)
 
 main = shake shakeOptions { 
          shakeVersion = "2",
-         shakeVerbosity = Normal
+         shakeVerbosity = Chatty
        } $ do
 
   action $ do
@@ -138,9 +138,10 @@ main = shake shakeOptions {
 
   let shared = [ "--enable-shared" | True ]
   let ghPages = "out" </> "gh-pages"
-  let localPackageDeps "llvm-general" = [ "llvm-general-pure" ]
+  let localPackageDeps "llvm-general" = [ "llvm-general-pure", "llvm-general-pure-test" ]
+      localPackageDeps "llvm-general-pure-test" = [ "llvm-general-pure" ]
       localPackageDeps _ = []
-      allPkgs = [ "llvm-general-pure", "llvm-general"]
+      allPkgs = [ "llvm-general-pure", "llvm-general-pure-test", "llvm-general"]
       needStage stage pkgs = needStamps [ (stage, pkg) | pkg <- pkgs ]
 
   phony "build" $ needStage "built" allPkgs

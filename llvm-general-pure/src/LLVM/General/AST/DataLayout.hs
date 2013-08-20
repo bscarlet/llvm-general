@@ -11,7 +11,7 @@ import LLVM.General.AST.AddrSpace
 
 -- | Little Endian is the one true way :-). Sadly, we must support the infidels.
 data Endianness = LittleEndian | BigEndian
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read, Show, Enum, Bounded)
 
 -- | An AlignmentInfo describes how a given type must and would best be aligned
 data AlignmentInfo = AlignmentInfo {
@@ -27,7 +27,7 @@ data AlignType
   | FloatAlign
   | AggregateAlign
   | StackAlign
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read, Show, Enum, Bounded)
 
 -- | a description of the various data layout properties which may be used during
 -- optimization

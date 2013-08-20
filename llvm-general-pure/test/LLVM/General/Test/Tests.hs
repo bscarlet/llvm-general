@@ -5,7 +5,7 @@ import Test.Framework
 import qualified LLVM.General.Test.DataLayout as DataLayout
 import qualified LLVM.General.Test.PrettyPrint as PrettyPrint
 
-tests = testGroup "llvm-general" [
+tests = testGroup "llvm-general-pure" [
     DataLayout.tests,
     PrettyPrint.tests
   ]

@@ -184,6 +184,7 @@ test-suite test
     QuickCheck >= 2.5.1.1,
     llvm-general == 3.4.0.0,
     llvm-general-pure == 3.4.0.0,
+    llvm-general-pure-test == 3.4.0.0,
     containers >= 0.4.2.1,
     mtl >= 2.0.1.0
   hs-source-dirs: test
@@ -200,6 +201,7 @@ test-suite test
     LLVM.General.Test.InlineAssembly
     LLVM.General.Test.Instructions
     LLVM.General.Test.Instrumentation
+    LLVM.General.Test.IR
     LLVM.General.Test.Linking
     LLVM.General.Test.Metadata
     LLVM.General.Test.Module

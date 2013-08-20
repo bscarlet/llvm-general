@@ -95,6 +95,7 @@ record name fields = do
   name <+> braces (punctuate comma [ n <+> "=" <+> v | (n,v) <- fields ])
 
 ctor :: QTree -> [QTree] -> QTree
+ctor name [] = name
 ctor name fields = do
   p <- asks precedence
   parensIfNeeded appPrec (foldl (<+>) name fields)
@@ -176,26 +177,31 @@ makePrettyShowInstance n = do
              case con of
                RecC conName (unzip3 -> (ns, _, _)) -> do
                  pvs <- mapM (const $ newName "f") ns
-                 let ss = [| record $(simpleName conName) $(listE [[|($(simpleName n), prettyShow $(varE pv))|] | (n, pv) <- zip ns pvs]) |]
                  match 
                    (conP conName (map varP pvs))
-                   (normalB ss)
+                   (normalB [| 
+                     record
+                       $(simpleName conName)
+                       $(listE [[|($(simpleName n), prettyShow $(varE pv))|] | (n, pv) <- zip ns pvs])
+                    |])
                    []
                NormalC conName fs -> do
                  pvs <- mapM (const $ newName "f") fs
-                 let ss = [| ctor $(simpleName conName) $(listE [[| prettyShow $(varE pv)|] | pv <- pvs]) |]
                  match 
                    (conP conName (map varP pvs))
-                   (normalB ss)
+                   (normalB [| ctor $(simpleName conName) $(listE [[| prettyShow $(varE pv)|] | pv <- pvs]) |])
                    []
                InfixC (_, n0) conName (_, n1) -> do
                  DataConI _ _ _ (Fixity prec _) <- reify conName
                  let ns = [n0, n1]
                  [p0,p1] <- mapM (const $ newName "f") ns
-                 let ss = [| parensIfNeeded prec (prettyShow $(varE p0) <+> $(simpleName conName) <+> prettyShow $(varE p1)) |]
                  match
                    (uInfixP (varP p0) conName (varP p1))
-                   (normalB ss)
+                   (normalB [| 
+                     parensIfNeeded 
+                      prec
+                      (prettyShow $(varE p0) <+> $(simpleName conName) <+> prettyShow $(varE p1))
+                    |])
                    []
                x -> error $ "unexpected constructor pattern: " ++ show x
          )
