@@ -103,7 +103,7 @@ needStamps ls = need (map stamp ls)
 
 main = shake shakeOptions { 
          shakeVersion = "2",
-         shakeVerbosity = Chatty
+         shakeVerbosity = Normal
        } $ do
 
   action $ do
