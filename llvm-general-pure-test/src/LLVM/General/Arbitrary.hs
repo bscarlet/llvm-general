@@ -33,8 +33,13 @@ split weights = sized $ \n -> do
 permute :: Gen [a] -> Gen [a]
 permute = (=<<) $ (map fst . sortBy (comparing snd) <$>) . mapM ((<$> (arbitrary :: Gen Int)) . (,))
 
-szFrq :: Int -> Int -> Int
-szFrq sz frq = if sz > 0 then frq else 0
+cFrq :: Bool -> Int -> Int
+cFrq b frq = if b then frq else 0
+
+factor :: Gen (Int, Int)
+factor = sized $ \s -> do
+  x <- choose (0, floor ((sqrt (fromIntegral s)) :: Double))
+  return (x, s `div` x)
 
 newtype Ident = Ident { getIdent :: String } deriving (Eq, Ord, Read, Show)
 instance Arbitrary Ident where
@@ -55,19 +60,32 @@ instance Arbitrary A.Module where
 
     let preGenerateNames :: (Eq a, Arbitrary a) => Int -> Gen (Int, [a])
         preGenerateNames s = do
-          count <- choose (0, floor ((sqrt (fromIntegral s)) :: Double))
+          (count, s') <- resize s factor
           names <- nub <$> vectorOf count arbitrary
-          return (s `div` count, names) 
+          return (s', names) 
                  
 --    globalsNames <- preGenerateNames globalsSize
     (typeDefSize, typeDefsNames) <- preGenerateNames typeDefsSize
 --    metadataNodesIDs <- preGenerateNames metadataNodesSize
 --    namedMetadatasNames <- preGenerateNames namedMetadatasSize
-    let arbitraryType :: Gen A.Type
-        arbitraryType = sized $ \sz -> frequency [
+    let arbitraryType :: Bool -> Gen A.Type
+        arbitraryType compound = sized $ \sz -> frequency [
           (4, return A.VoidType),
           (10, A.IntegerType <$> elements [ 1, 3, 8, 16, 32, 64, 128 ]),
-          (szFrq sz 5, A.PointerType <$> (resize (sz-1) arbitraryType) <*> arbitrary)
+          (cFrq (sz > 0) 5, A.PointerType <$> (resize (sz-1) (arbitraryType True)) <*> arbitrary),
+          (5, frequency [ 
+               (40, A.FloatingPointType <$> elements [ 16, 32, 64, 128 ] <*> pure A.IEEE),
+               (1, return $ A.FloatingPointType 128 A.PairOfFloats),
+               (1, return $ A.FloatingPointType 80 A.DoubleExtended)
+              ]),
+          (cFrq (compound && sz > 0) 2, do
+             [ rtSize, psSize ] <- resize (sz-1) $ split [ 1, 4 ]
+             A.FunctionType
+                <$> resize rtSize (arbitraryType False)
+                <*> (resize psSize $ do
+                      (count, s') <- factor
+                      vectorOf count (resize s' (arbitraryType False)))
+                <*> arbitrary)
          ]
 
     A.Module 
@@ -76,7 +94,7 @@ instance Arbitrary A.Module where
        <*> elements [ Just "x86_64-unknown-linux", Nothing ]
        <*> permute (
           forM typeDefsNames $ \n ->
-            A.TypeDefinition n <$> frequency [(10, Just <$> arbitraryType), (1, return Nothing)]
+            A.TypeDefinition n <$> frequency [(10, Just <$> (arbitraryType True)), (1, return Nothing)]
         )
     
 instance Arbitrary A.MetadataNodeID where
