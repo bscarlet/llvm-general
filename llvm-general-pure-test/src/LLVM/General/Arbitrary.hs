@@ -68,25 +68,38 @@ instance Arbitrary A.Module where
     (typeDefSize, typeDefsNames) <- preGenerateNames typeDefsSize
 --    metadataNodesIDs <- preGenerateNames metadataNodesSize
 --    namedMetadatasNames <- preGenerateNames namedMetadatasSize
-    let arbitraryType :: Bool -> Gen A.Type
-        arbitraryType compound = sized $ \sz -> frequency [
-          (4, return A.VoidType),
-          (10, A.IntegerType <$> elements [ 1, 3, 8, 16, 32, 64, 128 ]),
-          (cFrq (sz > 0) 5, A.PointerType <$> (resize (sz-1) (arbitraryType True)) <*> arbitrary),
-          (5, frequency [ 
-               (40, A.FloatingPointType <$> elements [ 16, 32, 64, 128 ] <*> pure A.IEEE),
-               (1, return $ A.FloatingPointType 128 A.PairOfFloats),
-               (1, return $ A.FloatingPointType 80 A.DoubleExtended)
-              ]),
-          (cFrq (compound && sz > 0) 2, do
-             [ rtSize, psSize ] <- resize (sz-1) $ split [ 1, 4 ]
-             A.FunctionType
-                <$> resize rtSize (arbitraryType False)
-                <*> (resize psSize $ do
-                      (count, s') <- factor
-                      vectorOf count (resize s' (arbitraryType False)))
-                <*> arbitrary)
-         ]
+    let arbitraryType :: Bool -> Bool -> Gen A.Type
+        arbitraryType fnOk derived = sized $ \sz -> do
+          let sub c = cFrq (c && sz > 0)
+          frequency [
+            (4, return A.VoidType),
+            (10, A.IntegerType <$> elements [ 1, 3, 8, 16, 32, 64, 128 ]),
+            (cFrq (sz > 0) 5, A.PointerType <$> (resize (sz-1) (arbitraryType True True)) <*> arbitrary),
+            (5, frequency [ 
+                 (40, A.FloatingPointType <$> elements [ 16, 32, 64, 128 ] <*> pure A.IEEE),
+                 (1, return $ A.FloatingPointType 128 A.PairOfFloats),
+                 (1, return $ A.FloatingPointType 80 A.DoubleExtended)
+                ]),
+            (sub fnOk 2, do
+               [ rtSize, psSize ] <- resize (sz-1) $ split [ 1, 4 ]
+               A.FunctionType
+                  <$> resize rtSize (arbitraryType False False)
+                  <*> (resize psSize $ do
+                        (count, s') <- factor
+                        vectorOf count (resize s' (arbitraryType False False)))
+                  <*> arbitrary),
+            (sub derived 2, do
+               A.VectorType <$> choose (1, 8) <*> resize (sz - 1) (arbitraryType False True)),
+            (sub derived 3, do
+               A.StructureType 
+                <$> frequency [ (10, return False), (1, return True) ]
+                <*> (resize (sz - 1) $ do
+                       (count, s') <- factor
+                       vectorOf count (resize s' (arbitraryType False True)))),
+            (sub derived 3, do
+               A.ArrayType <$> choose (1,8) <*> resize (sz-1) (arbitraryType False True)),
+            (cFrq derived 3, A.NamedTypeReference <$> elements typeDefsNames)
+           ]
 
     A.Module 
        <$> oneof [ return "<string>", getIdent <$> arbitrary ]
@@ -94,7 +107,7 @@ instance Arbitrary A.Module where
        <*> elements [ Just "x86_64-unknown-linux", Nothing ]
        <*> permute (
           forM typeDefsNames $ \n ->
-            A.TypeDefinition n <$> frequency [(10, Just <$> (arbitraryType True)), (1, return Nothing)]
+            A.TypeDefinition n <$> frequency [(10, Just <$> (arbitraryType False True)), (1, return Nothing)]
         )
     
 instance Arbitrary A.MetadataNodeID where
