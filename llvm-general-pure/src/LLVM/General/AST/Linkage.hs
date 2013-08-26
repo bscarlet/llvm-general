@@ -20,4 +20,4 @@ data Linkage
     | External
     | DLLImport
     | DLLExport
-  deriving (Eq, Read, Show, Typeable, Data)
+  deriving (Eq, Ord, Enum, Bounded, Read, Show, Typeable, Data)

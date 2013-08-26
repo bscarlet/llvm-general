@@ -5,4 +5,4 @@ import Data.Data
 
 -- | <http://llvm.org/docs/LangRef.html#visibility>
 data Visibility = Default | Hidden | Protected
-  deriving (Eq, Read, Show, Typeable, Data)
+  deriving (Eq, Ord, Enum, Bounded, Read, Show, Typeable, Data)
