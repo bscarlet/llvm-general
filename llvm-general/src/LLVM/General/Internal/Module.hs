@@ -203,7 +203,7 @@ withModuleFromAST context@(Context c) (A.Module moduleId dataLayout triple defin
          return $ do
            (liftIO . FFI.setAliasee a') =<< encodeM (A.G.aliasee a)
            return (FFI.upCast a')
-       (A.Function _ _ cc rAttrs resultType fName (args,isVarArgs) attrs _ _ blocks) -> do
+       (A.Function _ _ cc rAttrs resultType fName (args,isVarArgs) attrs _ _ gc blocks) -> do
          typ <- encodeM $ A.FunctionType resultType (map (\(A.Parameter t _ _) -> t) args) isVarArgs
          f <- liftIO . withName fName $ \fName -> FFI.addFunction m fName typ
          defineGlobal fName f
@@ -214,6 +214,7 @@ withModuleFromAST context@(Context c) (A.Module moduleId dataLayout triple defin
          liftIO $ setFunctionAttrs f attrs
          setSection f (A.G.section g)
          setAlignment f (A.G.alignment g)
+         setGC f gc
          forM blocks $ \(A.BasicBlock bName _ _) -> do
            b <- liftIO $ withName bName $ \bName -> FFI.appendBasicBlockInContext c f bName
            defineBasicBlock fName bName b
@@ -319,6 +320,7 @@ moduleAST (Module mod) = runDecodeAST $ do
                  `ap` (liftIO $ getFunctionAttrs f)
                  `ap` getSection f
                  `ap` getAlignment f
+                 `ap` getGC f
                  `ap` decodeBlocks
         ]
 
