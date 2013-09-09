@@ -186,7 +186,8 @@ test-suite test
     llvm-general-pure == 3.4.0.0,
     llvm-general-pure-test == 3.4.0.0,
     containers >= 0.4.2.1,
-    mtl >= 2.0.1.0
+    mtl >= 2.0.1.0,
+    random >= 1.0.1.1
   hs-source-dirs: test
   extensions:
     TupleSections

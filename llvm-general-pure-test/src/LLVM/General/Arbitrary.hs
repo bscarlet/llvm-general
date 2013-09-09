@@ -88,7 +88,10 @@ instance Arbitrary A.Module where
 --    metadataNodesIDs <- preGenerateNames metadataNodesSize
 --    namedMetadatasNames <- preGenerateNames namedMetadatasSize
 
-    let arbitraryType :: Bool -> Bool -> Bool -> Gen A.Type
+    let arbitraryStruct = sized $ \sz -> A.StructureType 
+          <$> frequency [ (10, return False), (1, return True) ]
+          <*> resize (sz - 1) (vectorOfS (arbitraryType False False True))
+        arbitraryType :: Bool -> Bool -> Bool -> Gen A.Type
         arbitraryType voidOk fnOk derived = sized $ \sz -> do
           let sub c = cFrq (c && sz > 0)
           frequency [
@@ -106,19 +109,19 @@ instance Arbitrary A.Module where
                   <$> resize rtSize (arbitraryType True False False)
                   <*> resize psSize (vectorOfS (arbitraryType False False False))
                   <*> arbitrary),
-            (sub derived 2, do
-               A.VectorType <$> choose (1, 8) <*> resize (sz - 1) (arbitraryType False False True)),
-            (sub derived 3, do
-               A.StructureType 
-                <$> frequency [ (10, return False), (1, return True) ]
-                <*> resize (sz - 1) (vectorOfS (arbitraryType False False True))),
-            (sub derived 3, do
-               A.ArrayType <$> frequency [ (1, pure 0), ( 10, choose (1,8)) ] <*> resize (sz-1) (arbitraryType False False True)),
-            (cFrq (derived && (not . null. snd $ typeDefsNames)) 3, A.NamedTypeReference <$> elements (snd typeDefsNames))
+            (sub derived 2, 
+               A.VectorType <$> choose (1, 8) <*> resize (sz - 1) (arbitraryType False False False)),
+            (sub derived 3, arbitraryStruct),
+            (sub derived 3, 
+               A.ArrayType 
+                  <$> frequency [ (1, pure 0), ( 10, choose (1,8)) ]
+                  <*> resize (sz-1) (arbitraryType False False True)),
+            (cFrq (derived && (not . null. snd $ typeDefsNames)) 3,
+               A.NamedTypeReference <$> elements (snd typeDefsNames))
            ]
 
     namedTypes <- liftM Map.fromList $ forPreGen typeDefsNames $ \n ->
-      (n,) <$> frequency [ (10, Just <$> (arbitraryType False False True)), (1, pure Nothing) ]
+      (n,) <$> frequency [ (10, Just <$> arbitraryStruct), (1, pure Nothing) ]
 
     let constantOfType :: A.Type -> Gen A.C.Constant
         constantOfType type' = sized $ \sz -> do
@@ -158,7 +161,7 @@ instance Arbitrary A.Module where
                              ]
                      A.C.GetElementPtr False 
                         <$> resize bSz (do
-                                         ws <- mapM (\s -> resize s g) indSzs
+                                         ws <- mapM (\s -> resize s g) (tail indSzs)
                                          constantOfType (A.PointerType (foldr ($) rt ws) as))
                         <*> mapM (\indSz -> resize indSz (constantOfType (A.IntegerType 32))) indSzs)
                  ]

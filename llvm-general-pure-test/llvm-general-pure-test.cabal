@@ -41,17 +41,6 @@ library
   exposed-modules:
     LLVM.General.Arbitrary
 
-executable sample
-  build-depends:  
-    base >= 3 && < 5,
-    QuickCheck >= 2.5.1.1,
-    llvm-general-pure == 3.4.0.0,
-    llvm-general-pure-test == 3.4.0.0,
-    containers >= 0.4.2.1,
-    mtl >= 2.0.1.0
-  hs-source-dirs: sample
-  main-is: Sample.hs
-
 test-suite test
   type: exitcode-stdio-1.0
   build-depends:  

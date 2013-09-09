@@ -155,6 +155,7 @@ setNamedType t (A.StructureType packed ets) = do
   ets <- encodeM ets
   packed <- encodeM packed
   liftIO $ FFI.structSetBody t ets packed
+setNamedType _ t = fail $ show t ++ " cannot be named. Only structures may be named"
 
       
     

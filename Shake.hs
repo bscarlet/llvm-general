@@ -156,7 +156,10 @@ main = shake shakeOptions {
     case stage of
       "configured" -> do
         needStage "installed" (localPackageDeps pkg)
-        need [ pkg </> "Setup.hs" ]
+        let needIf f = do
+             ex <- doesFileExist f
+             when ex $ need [ f ]
+        needIf (pkg </> "Setup.hs")
         need [ pkg </> pkg ++ ".cabal" ]
         cabalStep pkg $ [ "install-deps", "--enable-tests" ] ++ shared
         cabalStep pkg $ [ "configure", "--enable-tests" {- , "-fshared-llvm" -} ] ++ shared
@@ -171,7 +174,7 @@ main = shake shakeOptions {
         needStage "built" [pkg]
         () <- cmd "mv" [ pkg </> "dist", pkg </> "dist-hold" ]
         () <- cmd "cp" [ "-r", pkg </> "dist-hold", pkg </> "dist" ]
-        cabalStep pkg $ [ "install", "--reinstall" ] ++ shared
+        cabalStep pkg $ [ "install", "--reinstall", "--force-reinstalls" ] ++ shared
         () <- cmd "rm" [ "-r", pkg </> "dist" ]
         () <- cmd "mv" [ pkg </> "dist-hold", pkg </> "dist" ]
         return ()
