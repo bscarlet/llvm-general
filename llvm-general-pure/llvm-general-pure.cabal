@@ -43,6 +43,7 @@ library
     StandaloneDeriving
     ConstraintKinds
   exposed-modules:
+    Numeric.SoftFloat
     LLVM.General.AST
     LLVM.General.AST.AddrSpace
     LLVM.General.AST.InlineAssembly

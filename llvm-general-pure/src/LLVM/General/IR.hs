@@ -6,12 +6,16 @@ import Text.ParserCombinators.Parsec
 
 import Control.Applicative
 
+import GHC.Float (float2Double)
+
+import Data.Word
 import Data.Function
 import Data.List
 import Data.Char
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as BSUTF8
 import Numeric
+import Foreign.Storable
 
 import qualified LLVM.General.AST as A
 import qualified LLVM.General.AST.Float as A
@@ -114,11 +118,16 @@ instance IR A.C.Constant where
     where cToIR :: A.C.Constant -> (String, A.Type)
           cToIR c = (cToIR' c, typeOf c)
           cToIR' (A.C.Int b v) = show v
-          cToIR' (A.C.Float (A.Single x)) = showEFloat Nothing x ""
-          cToIR' (A.C.Float (A.Double x)) = showEFloat Nothing x ""
+          cToIR' (A.C.Float (A.Single x)) = floatS x
+          cToIR' (A.C.Float (A.Double x)) = floatS x
           cToIR' (A.C.Null t) = case t of A.PointerType _ _ -> "null"; _ -> "zeroinitializer"
           cToIR' (A.C.GetElementPtr _ p is) = "getelementptr (" ++ intercalate ", " (map ((\(ir,t) -> toIR t ++ " " ++ ir) . cToIR) (p:is)) ++ ")"
           cToIR' c = "(serialize constant: " ++ show c ++ ")"
+          floatS f = let s = showEFloat (Just 5) f "" in
+                     if any (==f) (map fst (readFloat s)) 
+                      then s
+                      else 
+                        "weirdfloat"
 
 escape :: String -> String
 escape = concatMap esc . map (toEnum . fromIntegral) . BS.unpack . BSUTF8.fromString
@@ -148,7 +157,7 @@ instance IR A.L.Linkage where
   toIR A.L.ExternWeak = " extern_weak"
   toIR A.L.LinkOnceODR = " linkonce_odr"
   toIR A.L.WeakODR = " weak_odr"
-  toIR A.L.External = " external"
+  toIR A.L.External = ""
   toIR A.L.DLLImport = " dllimport"
   toIR A.L.DLLExport = " dllexport"
 
