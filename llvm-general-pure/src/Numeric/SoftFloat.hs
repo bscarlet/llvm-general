@@ -79,16 +79,25 @@ integerFromBytes :: [Word8] -> Integer
 integerFromBytes [] = 0
 integerFromBytes (b:bs) = fromIntegral b .|. (shiftL (integerFromBytes bs) 8)
 
+reverseIfBigEndian = alloca $ \p -> do
+  pokeArray (castPtr p) [0 :: Word8 .. 7]
+  i <- peek p :: IO Word64
+  case i of
+    0x0706050403020100 -> return id
+    0x0001020304050607 -> return reverse
+    _ -> fail "mixed endianness"
+
 toBytes :: forall fs . HasSizes fs => SoftFloat fs -> [Word8]
 toBytes sf@(SoftFloat sgn fc) = either error id $ do
   let sz@(Sizes eb fb) = sizes :: Sizes fs
   (ex, fr) <- floatCaseToEF fc
-  return . integerToBytes ((eb + fb + 1) `div` 8) $ shiftL (shiftL (if sgn then 1 else 0) eb .|. fromIntegral ex) fb .|. fr
+  return . integerToBytes ((eb + fb + 1) `div` 8)
+    $ shiftL (shiftL (if sgn then 1 else 0) eb .|. fromIntegral ex) fb .|. fr
 
 fromBytes :: forall fs . HasSizes fs => [Word8] -> SoftFloat fs
 fromBytes bytes = either error id $ do
   let sz@(Sizes eb fb) = sizes :: Sizes fs
-  let bits = integerFromBytes bytes
+  let bits = integerFromBytes $ bytes
   when (shiftR bits (eb + fb + 1) /= 0) $ fail "too many bits making SoftFloat"
   fc <- efToFloatCase (
     fromIntegral (clearBit (shiftR bits fb) eb), 
@@ -99,14 +108,26 @@ fromBytes bytes = either error id $ do
     floatCase = fc
   }
 
+bitWidth s = search (\b -> shiftR s b == 0)
+  where
+    search :: (Int -> Bool) -> Int
+    search p = up 0 0
+      where up r b = if p r then down r (b-1) else up (setBit r b) (b+1)
+            down r (-1) = r
+            down r b = let r' = clearBit r b in down (if p r' then r' else r) (b-1)
+
 instance HasSizes fs => Storable (SoftFloat fs) where
   sizeOf _ = let Sizes eb fb = sizes :: Sizes fs
                  (sz, 0) = (eb + fb + 1) `divMod` 8
              in
                sz
   alignment _ = 1
-  poke p sf = pokeArray (castPtr p) (toBytes sf)
-  peek p = liftM fromBytes (peekArray (sizeOf (undefined :: SoftFloat fs)) (castPtr p))
+  poke p sf = do
+    reverseIfBigEndian <- reverseIfBigEndian
+    pokeArray (castPtr p) (reverseIfBigEndian . toBytes $ sf)
+  peek p = do
+    reverseIfBigEndian <- reverseIfBigEndian
+    liftM (fromBytes . reverseIfBigEndian) (peekArray (sizeOf (undefined :: SoftFloat fs)) (castPtr p))
 
 instance HasSizes fs => Num (SoftFloat fs) where
   abs s = s { sign = False }
@@ -126,16 +147,22 @@ instance HasSizes fs => Floating (SoftFloat fs) where
 instance HasSizes fs => RealFloat (SoftFloat fs) where
   floatRadix _ = 2
   floatDigits _ = fractionBits (sizes :: Sizes fs) + 1
+  floatRange _ = let m = shiftL 1 (exponentBits (sizes :: Sizes fs) - 1) in (3 - m, m)
+  decodeFloat f = if sign f 
+   then let (s, ex) = decodeFloat (f { sign = False }) in (-s, ex)
+   else
+     let Sizes eb fb = sizes :: Sizes fs in
+     case floatCase f of
+       Zero -> (0, 0)
+       Normal ex s -> (setBit s fb, ex - fb)
+       Denormal fr -> let n = fb + 1 - bitWidth fr in (shiftL fr n, 2 - shiftL 1 (eb - 1) - n - fb)
+       Infinity -> (0, 0)
+       NaN sig pl -> (0, 0)
   encodeFloat 0 _ = SoftFloat False Zero 
   encodeFloat s ex | s < 0 = (encodeFloat (-s) ex) { sign = True }
                    | otherwise = SoftFloat False $ 
     let Sizes eb fb = sizes :: Sizes fs
-        search :: (Int -> Bool) -> Int
-        search p = up 0 0
-          where up r b = if p r then down r (b-1) else up (setBit r b) (b+1)
-                down r (-1) = r
-                down r b = let r' = clearBit r b in down (if p r' then r' else r) (b-1)
-        slide = fb + 1 - search (\b -> shiftR s b == 0)
+        slide = fb + 1 - bitWidth s
         s' = clearBit (shift s slide) fb
         ex' = ex + fb - slide 
     in
@@ -153,3 +180,7 @@ instance HasSizes fs => RealFloat (SoftFloat fs) where
                   Denormal (shift s (slide + ex' - exMin - 1))
                 else
                   Zero
+  isNaN (SoftFloat _ (NaN _ _)) = True
+  isNaN (SoftFloat _ _) = False
+  isInfinite (SoftFloat _ Infinity) = True
+  isInfinite (SoftFloat _ _) = False

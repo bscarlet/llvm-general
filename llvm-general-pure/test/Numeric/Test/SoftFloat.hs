@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, RankNTypes #-}
 module Numeric.Test.SoftFloat where
 
 import Test.Framework
@@ -6,6 +6,10 @@ import Test.Framework.Providers.HUnit
 import Test.HUnit hiding (Test)
 import Test.Framework.Providers.QuickCheck2
 import Test.QuickCheck.Property
+import Test.QuickCheck.Gen
+import Test.QuickCheck.Arbitrary
+
+import Control.Applicative
 
 import Foreign.Marshal
 import Foreign.Storable
@@ -21,6 +25,11 @@ storeBytes :: Storable s => s -> IO [Word8]
 storeBytes s = alloca $ \p -> do
   poke p s
   peekArray (sizeOf s) (castPtr p)
+
+loadBytes :: Storable s => [Word8] -> IO s
+loadBytes ws = alloca $ \p -> do
+  pokeArray (castPtr p) ws
+  peek p
 
 showFloatBits :: Sizes fs -> [Word8] -> String
 showFloatBits (Sizes eb fb) ws = 
@@ -39,6 +48,20 @@ floatlyClose x y =
   in 
     x == y || abs (i x - i y) <= 1
 
+instance HasSizes fs => Arbitrary (SoftFloat fs) where
+  arbitrary = do
+    let Sizes eb fb = sizes :: Sizes fs
+        m = 2^(eb - 1)
+        n = 2^fb
+    SoftFloat <$> arbitrary <*> frequency [
+      (100, Normal <$> choose (2 - m, m - 1) <*> choose (0, n - 1)),
+      (10, pure Zero),
+      (10, Denormal <$> choose (1, n - 1)),
+      (10, pure Infinity),
+      (5, NaN True <$> choose (0, (n `div` 2) - 1)),
+      (5, NaN False <$> choose (1, (n `div` 2) - 1))
+     ] 
+
 tests = testGroup "SoftFloat" [
   testGroup "like hardware" $
     let testSize :: forall fs . (
@@ -47,23 +70,50 @@ tests = testGroup "SoftFloat" [
                       Storable (HardFloat fs), 
                       HasSizes fs
                     ) => fs -> Test
-        testSize fs = testGroup (show (sizes :: Sizes fs)) [
-          testProperty "encodeFloat" $ \s ex -> morallyDubiousIOProperty $ do
-            let soft = encodeFloat s ex :: SoftFloat fs
-                hard = encodeFloat s ex :: HardFloat fs
-            sBytes <- storeBytes soft
-            hBytes <- storeBytes hard
-            return $ if abs ex > 2^20 || floatlyClose sBytes hBytes
-               then 
-                 succeeded
-               else
-                 failed {
-                   reason = "with s=" ++ show s ++ ", ex=" ++ show ex ++ "\n"
-                              ++ "for: " ++ show hard ++ " got " ++ show soft ++ "\n"
-                              ++ "expected: " ++ showFloatBits (sizes :: Sizes fs) hBytes ++ "\n"
-                              ++ "but got:  " ++ showFloatBits (sizes :: Sizes fs) sBytes ++ "\n" 
-                 }
-         ]
+        testSize fs = 
+          let
+            sz@(Sizes eb fb) = sizes :: Sizes fs
+            testMember :: (Eq a, Show a) => String -> (forall rf . RealFloat rf => rf -> a) -> Test
+            testMember s f = testProperty s $ forAll (vectorOf ((eb + fb + 1) `div` 8) arbitrary) $ \ws -> 
+              morallyDubiousIOProperty $ do
+                soft <- loadBytes ws :: IO (SoftFloat fs)
+                hard <- loadBytes ws :: IO (HardFloat fs)
+                return $ if f soft == f hard
+                  then succeeded
+                  else 
+                    failed {
+                      reason = "with bytes: " ++ showFloatBits sz ws ++ "\n"
+                                 ++ "->: " ++ show hard ++ ", " ++ show soft ++ "\n"
+                                 ++ "expected: " ++ show (f hard) ++ "\n"
+                                 ++ "but got:  " ++ show (f soft) ++ "\n" 
+                    }
+              
+          in testGroup (show (sizes :: Sizes fs)) [
+             testGroup "RealFloat" [
+
+               testMember "floatRadix" floatRadix,
+               testMember "floatDigits" floatDigits,
+               testMember "floatRange" floatRange,
+               testMember "decodeFloat" $ \f -> 
+                 if (isNaN f || isInfinite f) then Nothing else Just (decodeFloat f),
+
+               testProperty "encodeFloat" $ \s ex -> morallyDubiousIOProperty $ do
+                 let soft = encodeFloat s ex :: SoftFloat fs
+                     hard = encodeFloat s ex :: HardFloat fs
+                 sBytes <- storeBytes soft
+                 hBytes <- storeBytes hard
+                 return $ if abs ex > 2^20 || floatlyClose sBytes hBytes
+                   then 
+                     succeeded
+                   else
+                     failed {
+                       reason = "with s=" ++ show s ++ ", ex=" ++ show ex ++ "\n"
+                                  ++ "for: " ++ show hard ++ " got " ++ show soft ++ "\n"
+                                  ++ "expected: " ++ showFloatBits (sizes :: Sizes fs) hBytes ++ "\n"
+                                  ++ "but got:  " ++ showFloatBits (sizes :: Sizes fs) sBytes ++ "\n" 
+                     }
+             ]
+           ]
     in [
       testSize (FSSingle ()),
       testSize (FSDouble ())
