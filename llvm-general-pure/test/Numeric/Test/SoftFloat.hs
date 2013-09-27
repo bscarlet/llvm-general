@@ -16,6 +16,7 @@ import Foreign.Storable
 import Foreign.Ptr
 
 import Numeric
+import Data.Ratio
 import Data.Word
 import Data.Bits
 import Data.List
@@ -167,10 +168,13 @@ tests = testGroup "SoftFloat" [
                testUnaryMember "ceiling" $ boring $ return . ceiling,
                testUnaryMember "floor" $ boring $ return . floor
               ],
+             testGroup "Floating" [
+               testUnaryMember "exp" $ fbits . exp
+              ],
              testGroup "RealFloat" [
-               testUnaryMember "floatRadix" (return . floatRadix),
-               testUnaryMember "floatDigits" (return . floatDigits),
-               testUnaryMember "floatRange" (return . floatRange),
+               testUnaryMember "floatRadix" $ return . floatRadix,
+               testUnaryMember "floatDigits" $ return . floatDigits,
+               testUnaryMember "floatRange" $ return . floatRange,
                testUnaryMember "decodeFloat" $ return . \f -> 
                  if (isNaN f || isInfinite f) then Nothing else Just (decodeFloat f),
 
@@ -190,11 +194,11 @@ tests = testGroup "SoftFloat" [
                                   ++ "but got:  " ++ showFloatBits sz sBytes ++ "\n" 
                      },
 
-               testUnaryMember "isNaN" (return . isNaN),
-               testUnaryMember "isInfinite" (return . isInfinite),
-               testUnaryMember "isDenormalized" (return . isDenormalized),
-               testUnaryMember "isNegativeZero" (return . isNegativeZero),
-               testUnaryMember "isIEEE" (return . isNegativeZero)
+               testUnaryMember "isNaN" $ return . isNaN,
+               testUnaryMember "isInfinite" $ return . isInfinite,
+               testUnaryMember "isDenormalized" $ return . isDenormalized,
+               testUnaryMember "isNegativeZero" $ return . isNegativeZero,
+               testUnaryMember "isIEEE" $ return . isNegativeZero
               ]
            ]
     in [
@@ -254,6 +258,53 @@ tests = testGroup "SoftFloat" [
             a <- l "0 01100010 110 0010 0111 0011 0111 0100"
             b <- l "0 00000000 000 0010 0000 0010 0000 0010"
             return $ a / b
+      h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
+      s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
+      showFloatBits sz s @?= showFloatBits sz h,
+    testCase "fromRational hurm" $ do
+      let sz = sizes :: Sizes FSSingle
+          pl :: Fractional f => f
+          pl = fromRational (147573952589660684615 % 147573952589676412928)
+      h <- storeBytes (pl :: HardFloat FSSingle)
+      s <- storeBytes (pl :: SoftFloat FSSingle)
+      showFloatBits sz s @?= showFloatBits sz h,
+    testCase "fromRational big" $ do
+      let sz = sizes :: Sizes FSSingle
+          pl :: Fractional f => f
+          pl = fromRational ((bit 141 + 1) % bit 141)
+      h <- storeBytes (pl :: HardFloat FSSingle)
+      s <- storeBytes (pl :: SoftFloat FSSingle)
+      showFloatBits sz s @?= showFloatBits sz h,
+    testCase "exp denormal" $ do
+      let sz = sizes :: Sizes FSSingle
+          l :: Storable s => String -> IO s
+          l = loadBytes . readBits 
+          pl :: (RealFloat f, Storable f) => IO f
+          pl = do
+            a <- l "0 00000000 000 0000 0000 0001 0000 0000"
+            return $ exp a
+      h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
+      s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
+      showFloatBits sz s @?= showFloatBits sz h,
+    testCase "exp big" $ do
+      let sz = sizes :: Sizes FSSingle
+          l :: Storable s => String -> IO s
+          l = loadBytes . readBits 
+          pl :: (RealFloat f, Storable f) => IO f
+          pl = do
+            a <- l "0 11010111 110 1110 1100 1110 1101 0000"
+            return $ exp a
+      h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
+      s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
+      showFloatBits sz s @?= showFloatBits sz h,
+    testCase "exp negative small" $ do
+      let sz = sizes :: Sizes FSSingle
+          l :: Storable s => String -> IO s
+          l = loadBytes . readBits 
+          pl :: (RealFloat f, Storable f) => IO f
+          pl = do
+            a <- l "1 01010011 110 1111 1111 1110 1011 1001"
+            return $ exp a
       h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
       s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
       showFloatBits sz s @?= showFloatBits sz h

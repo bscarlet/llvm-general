@@ -147,7 +147,7 @@ instance HasSizes fs => Storable (SoftFloat fs) where
     liftM (fromBytes . reverseIfBigEndian) (peekArray (sizeOf (undefined :: SoftFloat fs)) (castPtr p))
 
 roundUp :: RoundingMode -> Ordering -> Integer -> Bool
-roundUp roundingMode ordering s =
+roundUp roundingMode ordering s = 
   case (roundingMode, ordering) of
     (RoundDown, _) -> False
     (RoundTowardZero, _) -> False
@@ -164,19 +164,19 @@ encodeFloatRounding' :: forall fs . HasSizes fs => Rational -> RoundingMode -> I
 encodeFloatRounding' remainder roundingMode s ex
   | s == 0 = SoftFloat False Zero
   | s < 0 = (encodeFloatRounding' remainder (flipRounding roundingMode) (-s) ex) { sign = True }
-  | otherwise = SoftFloat False $
+  | otherwise = SoftFloat False $ 
   let Sizes eb fb = sizes :: Sizes fs
       exMin = 1 - shiftL 1 (eb - 1)
       bw = bitWidth s
       ex' = ex + bw - 1
-      dropBits = btrace "dropBits" $ bw - fb - if ex' > exMin then 1 else (ex' - exMin)
+      dropBits = bw - fb - if ex' > exMin then 1 else (ex' - exMin)
       s' = shift s (-dropBits)
-      droppedBits = btraceB "droppedBits" $ btraceB "s" s .&. (complement (shift (-1) dropBits))
-      tiePoint = shift (btraceB "denom" $ denominator remainder) dropBits
-      remainder' = 2*((denominator remainder)*droppedBits + (btraceB "numer" $ numerator remainder))
+      droppedBits = s .&. (complement (shift (-1) dropBits))
+      tiePoint = shift (denominator remainder) dropBits
+      remainder' = 2*((denominator remainder)*droppedBits + (numerator remainder))
       (s'', ex'') = 
         if remainder' > 0 && roundUp roundingMode (compare remainder' tiePoint) s'
-         then (s' + 1, ex' + if s'' == bit fb then 1 else 0)
+         then (s' + 1, ex' + if s'' == bit (fb + 1) then 1 else 0)
          else (s', ex')
   in case () of
         -- these first case is a shortcut to avoid calcuating droppedBits when the
@@ -187,6 +187,21 @@ encodeFloatRounding' remainder roundingMode s ex
       | ex'' > exMin -> Normal ex'' (clearBit s'' fb)
       | ex'' + fb >= exMin -> Denormal s''
     _ -> Zero
+
+
+divideRoundingEx :: forall fs . HasSizes fs => RoundingMode -> (Integer, Int) -> (Integer, Int) -> SoftFloat fs
+divideRoundingEx roundingMode = go
+  where
+    go (s0, ex0) p1 | s0 < 0 = negate $ go (negate s0, ex0) p1
+    go p0 (s1, ex1) | s1 < 0 = negate $ go p0 (negate s1, ex1)
+    go (s0, ex0) (s1, ex1) = 
+      let
+        Sizes eb fb = sizes :: Sizes fs
+        d = fb + if (s0 < s1) then 1 else 0
+        (s', rem) = (shiftL s0 d) `divMod` s1
+        ex' = ex0 - ex1 - d
+      in
+        encodeFloatRounding' (rem % s1) roundingMode s' ex'
 
 divideRounding :: forall fs . HasSizes fs => RoundingMode -> SoftFloat fs -> SoftFloat fs -> SoftFloat fs
 divideRounding roundingMode = go
@@ -199,15 +214,7 @@ divideRounding roundingMode = go
     SoftFloat False Infinity `go` SoftFloat False _ = SoftFloat False Infinity
     SoftFloat False _ `go` SoftFloat False Zero = SoftFloat False Infinity
     SoftFloat False _ `go` SoftFloat False Infinity = SoftFloat False Zero
-    sf0 `go` sf1 = 
-      let (s0, ex0) = btrace "sf0" $ decodeFloat sf0
-          (s1, ex1) = btrace "sf1" $ decodeFloat sf1
-          Sizes eb fb = sizes :: Sizes fs
-          d = btrace "d" $ fb + if (btraceB "s0" s0 < btraceB "s1" s1) then 1 else 0
-          (s', rem) = btrace "divMod: " $ (shiftL s0 d) `divMod` s1
-          ex' = ex0 - ex1 - d
-      in
-        encodeFloatRounding' (rem % s1) roundingMode s' ex'
+    sf0 `go` sf1 = divideRoundingEx roundingMode (decodeFloat sf0) (decodeFloat sf1)
 
 instance HasSizes fs => Num (SoftFloat fs) where
   sf@(SoftFloat _ (NaN _ _)) + _ = sf { floatCase = (floatCase sf) { quiet = True } }
@@ -279,7 +286,8 @@ instance HasSizes fs => Real (SoftFloat fs) where
 instance HasSizes fs => Fractional (SoftFloat fs) where
   (/) = divideRounding RoundToNearestTiesToEven
   recip = (1/)
-  fromRational r = (fromIntegral (numerator r)) / (fromIntegral (denominator r))
+  fromRational r = 
+    divideRoundingEx RoundToNearestTiesToEven (numerator r, 0) (denominator r, 0)
   
 instance HasSizes fs => RealFrac (SoftFloat fs) where
   properFraction sf@(SoftFloat True _) = (negate *** negate) . properFraction . negate $ sf
@@ -287,7 +295,21 @@ instance HasSizes fs => RealFrac (SoftFloat fs) where
     let (s, ex) = decodeFloat sf
     in (fromIntegral (shift s ex), encodeFloat (s .&. complement (shift (-1) (-ex))) ex)
 
+taylor :: [Rational] -> (Rational -> Rational) -> Int -> Rational -> Rational
+taylor coeffs bound bits x = expandToPrecision 0 (zip coeffs (zipWith (/) (iterate (x*) 1) (scanl (*) 1 [1..])))
+  where m = bound x
+        expandToPrecision s ((c, d) : cds) = 
+          let s' = s + c*d in if abs(m*d) < abs(s')/(2^bits) then s' else expandToPrecision s' cds
+
 instance HasSizes fs => Floating (SoftFloat fs) where
+  exp sf@(SoftFloat _ (NaN _ _)) = sf { floatCase = (floatCase sf) { quiet = True } }
+  exp sf@(SoftFloat False Infinity) = sf
+  exp (SoftFloat True Infinity) = SoftFloat False Zero
+  exp sf@(SoftFloat s _) | abs(sf) > encodeFloat (fromIntegral (exponentBits (sizes :: Sizes fs))) 0 = 
+    SoftFloat False (if s then Zero else Infinity)
+  exp sf = fromRational
+           . taylor (repeat 1) (\x -> 4^(ceiling (max 0 x))) (fractionBits (sizes :: Sizes fs)) 
+           . toRational $ sf
 
 data RoundingMode
   = RoundToNearestTiesToEven
