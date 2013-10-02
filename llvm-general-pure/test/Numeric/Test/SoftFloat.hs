@@ -169,7 +169,8 @@ tests = testGroup "SoftFloat" [
                testUnaryMember "floor" $ boring $ return . floor
               ],
              testGroup "Floating" [
-               testUnaryMember "exp" $ fbits . exp
+               testUnaryMember "exp" $ fbits . exp,
+               testUnaryMember "sinh" $ fbits . sinh
               ],
              testGroup "RealFloat" [
                testUnaryMember "floatRadix" $ return . floatRadix,
@@ -205,95 +206,127 @@ tests = testGroup "SoftFloat" [
       testSize (FSSingle ()),
       testSize (FSDouble ())
      ],
-    testCase "encodeFloat rounding" $ do
-      let sz = sizes :: Sizes FSSingle
-          f a b s = do
-            ws <- storeBytes (encodeFloat a b :: SoftFloat FSSingle)
-            showFloatBits sz ws @?= s
---      f (bit 23 - 1) (-149) "0 00000000 111 1111 1111 1111 1111 1111"
-      f (bit 24 - 1) (-150) "0 00000001 000 0000 0000 0000 0000 0000",
---      f 3 (-151) "0 00000000 000 0000 0000 0000 0000 0001",
-    testCase "Add rounding" $ do
-      let sz = sizes :: Sizes FSSingle
-          l :: Storable s => String -> IO s
-          l = loadBytes . readBits 
-          pl :: (RealFloat f, Storable f) => IO f
-          pl = do
-            a <- l "0 00000000 000 0000 0000 0000 0000 0001"
-            b <- l "0 00000010 000 0000 0000 0000 0000 0001"
-            return $ a + b
-      h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
-      s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
-      showFloatBits sz s @?= showFloatBits sz h,
-    testCase "Multiply rounding" $ do
-      let sz = sizes :: Sizes FSSingle
-          l :: Storable s => String -> IO s
-          l = loadBytes . readBits 
-          pl :: (RealFloat f, Storable f) => IO f
-          pl = do
-            a <- l "0 01011001 001 0000 1110 0110 0111 0000"
-            b <- l "1 00001111 011 1100 0110 0100 0001 0110"
-            return $ a * b
-      h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
-      s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
-      showFloatBits sz s @?= showFloatBits sz h,
-    testCase "Multiply infinity" $ do
-      let sz = sizes :: Sizes FSSingle
-          l :: Storable s => String -> IO s
-          l = loadBytes . readBits 
-          pl :: (RealFloat f, Storable f) => IO f
-          pl = do
-            a <- l "0 11111111 000 0000 0000 0000 0000 0000"
-            b <- l "0 11111111 000 0000 0000 0000 0000 0000"
-            return $ a * b
-      h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
-      s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
-      showFloatBits sz s @?= showFloatBits sz h,
-    testCase "Divide rounding" $ do
-      let sz = sizes :: Sizes FSSingle
-          l :: Storable s => String -> IO s
-          l = loadBytes . readBits 
-          pl :: (RealFloat f, Storable f) => IO f
-          pl = do
-            a <- l "0 01100010 110 0010 0111 0011 0111 0100"
-            b <- l "0 00000000 000 0010 0000 0010 0000 0010"
-            return $ a / b
-      h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
-      s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
-      showFloatBits sz s @?= showFloatBits sz h,
-    testGroup "fromRational" [
-      testCase name $ do
+    testGroup "regressions" [
+      testCase "encodeFloat rounding" $ do
         let sz = sizes :: Sizes FSSingle
-            pl :: Fractional f => f
-            pl = fromRational rat
-        h <- storeBytes (pl :: HardFloat FSSingle)
-        s <- storeBytes (pl :: SoftFloat FSSingle)
-        showFloatBits sz s @?= showFloatBits sz h
-      | (name, rat) <- zip (map show [0..]) [
-          (bit 141 + 1) % bit 141,
-          1271433020295 % 123792455370
-        ]
-     ],
-    testGroup "exp" [
-      testCase name $ do
+            f a b s = do
+              ws <- storeBytes (encodeFloat a b :: SoftFloat FSSingle)
+              showFloatBits sz ws @?= s
+  --      f (bit 23 - 1) (-149) "0 00000000 111 1111 1111 1111 1111 1111"
+        f (bit 24 - 1) (-150) "0 00000001 000 0000 0000 0000 0000 0000",
+  --      f 3 (-151) "0 00000000 000 0000 0000 0000 0000 0001",
+      testCase "Add rounding" $ do
         let sz = sizes :: Sizes FSSingle
             l :: Storable s => String -> IO s
             l = loadBytes . readBits 
             pl :: (RealFloat f, Storable f) => IO f
             pl = do
-              a <- l bits
-              return $ exp a
+              a <- l "0 00000000 000 0000 0000 0000 0000 0001"
+              b <- l "0 00000010 000 0000 0000 0000 0000 0001"
+              return $ a + b
         h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
         s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
-        showFloatBits sz s @?= showFloatBits sz h
-      | (name, bits) <- zip (map show [0..]) [
-          "0 00000000 000 0000 0000 0001 0000 0000",
-          "0 11010111 110 1110 1100 1110 1101 0000",
-          "1 01010011 110 1111 1111 1110 1011 1001",
-          "0 10000010 101 0111 0000 0110 0000 1100",
-          "1 10000001 001 0010 0010 0000 1010 0001",
-          "0 10000000 001 0101 0001 0011 0010 0101",
-          "1 10000110 011 1011 0010 1110 1111 0111"
-        ]
+        showFloatBits sz s @?= showFloatBits sz h,
+      testCase "Subtract" $ do
+        let sz = sizes :: Sizes FSSingle
+            l :: Storable s => String -> IO s
+            l = loadBytes . readBits 
+            pl :: (RealFloat f, Storable f) => IO f
+            pl = do
+              a <- l "0 00000100 000 0000 0000 0000 0000 0000"
+              b <- l "0 00000000 000 0000 0000 0000 0000 0001"
+              return $ a - b
+        h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
+        s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
+        showFloatBits sz s @?= showFloatBits sz h,
+      testCase "Multiply rounding" $ do
+        let sz = sizes :: Sizes FSSingle
+            l :: Storable s => String -> IO s
+            l = loadBytes . readBits 
+            pl :: (RealFloat f, Storable f) => IO f
+            pl = do
+              a <- l "0 01011001 001 0000 1110 0110 0111 0000"
+              b <- l "1 00001111 011 1100 0110 0100 0001 0110"
+              return $ a * b
+        h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
+        s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
+        showFloatBits sz s @?= showFloatBits sz h,
+      testCase "Multiply infinity" $ do
+        let sz = sizes :: Sizes FSSingle
+            l :: Storable s => String -> IO s
+            l = loadBytes . readBits 
+            pl :: (RealFloat f, Storable f) => IO f
+            pl = do
+              a <- l "0 11111111 000 0000 0000 0000 0000 0000"
+              b <- l "0 11111111 000 0000 0000 0000 0000 0000"
+              return $ a * b
+        h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
+        s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
+        showFloatBits sz s @?= showFloatBits sz h,
+      testCase "Divide rounding" $ do
+        let sz = sizes :: Sizes FSSingle
+            l :: Storable s => String -> IO s
+            l = loadBytes . readBits 
+            pl :: (RealFloat f, Storable f) => IO f
+            pl = do
+              a <- l "0 01100010 110 0010 0111 0011 0111 0100"
+              b <- l "0 00000000 000 0010 0000 0010 0000 0010"
+              return $ a / b
+        h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
+        s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
+        showFloatBits sz s @?= showFloatBits sz h,
+      testGroup "fromRational" [
+        testCase name $ do
+          let sz = sizes :: Sizes FSSingle
+              pl :: Fractional f => f
+              pl = fromRational rat
+          h <- storeBytes (pl :: HardFloat FSSingle)
+          s <- storeBytes (pl :: SoftFloat FSSingle)
+          showFloatBits sz s @?= showFloatBits sz h
+        | (name, rat) <- zip (map show [0..]) [
+            (bit 141 + 1) % bit 141,
+            1271433020295 % 123792455370
+          ]
+       ],
+      testGroup "exp" [
+        testGroup "single" [
+          testCase name $ do
+            let sz = sizes :: Sizes FSSingle
+                l :: Storable s => String -> IO s
+                l = loadBytes . readBits 
+                pl :: (RealFloat f, Storable f) => IO f
+                pl = do
+                  a <- l bits
+                  return $ exp a
+            h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
+            s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
+            showFloatBits sz s @?= showFloatBits sz h
+          | (name, bits) <- zip (map show [0..]) [
+              "0 00000000 000 0000 0000 0001 0000 0000",
+              "0 11010111 110 1110 1100 1110 1101 0000",
+              "1 01010011 110 1111 1111 1110 1011 1001",
+              "0 10000010 101 0111 0000 0110 0000 1100",
+              "1 10000001 001 0010 0010 0000 1010 0001",
+              "0 10000000 001 0101 0001 0011 0010 0101",
+              "1 10000110 011 1011 0010 1110 1111 0111",
+              "1 01111111 111 0010 1011 1011 0101 1100" -- this case hits an OS X expf rounding bug
+            ]
+         ],
+        testGroup "double" [
+          testCase name $ do
+            let sz = sizes :: Sizes FSDouble
+                l :: Storable s => String -> IO s
+                l = loadBytes . readBits 
+                pl :: (RealFloat f, Storable f) => IO f
+                pl = do
+                  a <- l bits
+                  return $ exp a
+            h <- storeBytes =<< (pl :: IO (HardFloat FSDouble))
+            s <- storeBytes =<< (pl :: IO (SoftFloat FSDouble))
+            showFloatBits sz s @?= showFloatBits sz h
+          | (name, bits) <- zip (map show [0..]) [
+            ]
+         ]
+       ]
      ]
  ]

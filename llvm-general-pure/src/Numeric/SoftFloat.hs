@@ -9,6 +9,7 @@ import Control.Monad
 import Control.Arrow
 
 import Debug.Trace
+import Numeric
 
 import Data.Bits
 import Data.Word
@@ -25,15 +26,14 @@ sbits = reverse . intercalate " "
         . map (\i -> if odd i then '1' else '0')
         . takeWhile (/=0) . iterate (`div` 2)
 
-qq = True
-btrace s v = 
-  if qq 
-   then ((\vv -> trace ("finished " ++ s ++ ": " ++ show vv) vv) $ trace ("starting " ++ s) v)
+btraceQ ss s v = 
+  if False
+   then ((\vv -> trace ("finished " ++ s ++ ": " ++ ss vv) vv) $ trace ("starting " ++ s) v)
    else v
-btraceB s v = 
-  if qq
-   then ((\vv -> trace ("finished " ++ s ++ ": " ++ sbits vv) vv) $ trace ("starting " ++ s) v)
-   else v
+btrace :: Show v => String -> v -> v
+btrace = btraceQ show
+btraceB :: String -> Integer -> Integer
+btraceB = btraceQ sbits
 
 data Sizes fs = Sizes { exponentBits :: Int, fractionBits :: Int }
   deriving (Read, Show)
@@ -62,10 +62,10 @@ data FloatCase fs
 floatCaseToEF :: forall m fs . (Monad m, HasSizes fs) => FloatCase fs -> m (Int, Integer)
 floatCaseToEF fc = do
   let Sizes eb fb = sizes :: Sizes fs
-      ones = shiftL 1 eb - 1
+      ones = bit eb - 1
   case fc of
-    Normal ex fr | ex >= 1 - m && ex <= m -> return (ex + m - 1, fr)
-                 where m = shiftL 1 (eb - 1)
+    Normal ex fr | ex >= 1 - m && ex <= m && shiftR fr fb == 0 -> return (ex + m - 1, fr)
+                 where m = bit (eb - 1)
     Zero -> return (0, 0)
     Denormal s | s /= 0 && shiftR s fb == 0 -> return (0, s)
     Infinity -> return (ones, 0)
@@ -79,9 +79,9 @@ efToFloatCase(ex, fr) = do
   case ex of
     0 -> return $ case fr of 0 -> Zero; fr -> Denormal fr
     _ | ex == ones -> return $ case fr of 0 -> Infinity; pl | shiftR pl fb == 0 -> NaN (testBit pl (fb - 1)) (clearBit pl (fb - 1))
-      | shiftR ex eb == 0 && shiftR fr fb == 0 -> return $ Normal (ex - (shiftL 1 (eb - 1)) + 1) fr
-      | otherwise -> fail "mailformed input making FloatCase"
-        where ones = shiftL 1 eb - 1
+      | shiftR ex eb == 0 && shiftR fr fb == 0 -> return $ Normal (ex - bit (eb - 1) + 1) fr
+      | otherwise -> fail "malformed input making FloatCase"
+        where ones = bit eb - 1
 
 data SoftFloat fs = SoftFloat { sign :: Bool, floatCase :: FloatCase fs }
   deriving (Read, Show)
@@ -120,7 +120,7 @@ fromBytes bytes = either error id $ do
   when (shiftR bits (eb + fb + 1) /= 0) $ fail "too many bits making SoftFloat"
   fc <- efToFloatCase (
     fromIntegral (clearBit (shiftR bits fb) eb), 
-    bits .&. complement (shiftL (-1) fb)
+    bits .&. (bit fb - 1)
    )
   return SoftFloat {
     sign = testBit bits (eb + fb),
@@ -135,6 +135,9 @@ search p = up 0 0
 
 bitWidth :: Integer -> Int
 bitWidth s = search (\b -> shiftR s b == 0)
+
+onePlusIntLog2 :: Rational -> Int
+onePlusIntLog2 r = let x b = 2^^b > r in if r <= 1 then 1 - search (not . x . negate) else search x
 
 instance HasSizes fs => Storable (SoftFloat fs) where
   sizeOf _ = let Sizes eb fb = sizes :: Sizes fs
@@ -160,6 +163,17 @@ roundUp roundingMode ordering s =
     (RoundToNearestTiesAwayFromZero, EQ) -> True
     (RoundToNearestTiesToEven, EQ) -> odd s
 
+roundUp' :: RoundingMode -> Rational -> Bool
+roundUp' roundingMode s = 
+  case (roundingMode, (odd *** (compare (1/2))) . properFraction $ s) of
+    (RoundDown, _) -> False
+    (RoundTowardZero, _) -> False
+    (RoundUp, _) -> True
+    (_, (_, LT)) -> False
+    (_, (_, GT)) -> True
+    (RoundToNearestTiesAwayFromZero, (_, EQ)) -> True
+    (RoundToNearestTiesToEven, (iOdd, EQ)) -> iOdd
+
 encodeFloatRounding :: forall fs . HasSizes fs => RoundingMode -> Integer -> Int -> SoftFloat fs
 encodeFloatRounding = flip encodeFloatRounding' 0
 
@@ -169,7 +183,7 @@ encodeFloatRounding' roundingMode remainder s ex
   | s < 0 = (encodeFloatRounding' (flipRounding roundingMode) remainder (-s) ex) { sign = True }
   | otherwise = SoftFloat False $
   let Sizes eb fb = sizes :: Sizes fs
-      exMin = 1 - shiftL 1 (eb - 1)
+      exMin = 1 - bit (eb - 1)
       bw = bitWidth s
       ex' = ex + bw - 1
       dropBits = bw - fb - if ex' > exMin then 1 else (ex' - exMin)
@@ -185,12 +199,11 @@ encodeFloatRounding' roundingMode remainder s ex
         -- these first case is a shortcut to avoid calcuating droppedBits when the
         -- input exponent is ridiculously small
     _ | ex' < -(bit eb) -> Zero
-      | ex'' >= shiftL 1 (eb - 1) -> Infinity
+      | ex'' >= bit (eb - 1) -> Infinity
       | s'' == 0 -> Zero
-      | ex'' > exMin -> Normal ex'' (clearBit s'' fb)
+      | ex'' > exMin -> Normal ex'' (s'' .&. (bit fb - 1))
       | ex'' + fb >= exMin -> Denormal s''
     _ -> Zero
-
 
 divideRoundingEx :: forall fs . HasSizes fs => RoundingMode -> (Integer, Int) -> (Integer, Int) -> SoftFloat fs
 divideRoundingEx roundingMode = go
@@ -302,22 +315,32 @@ instance HasSizes fs => RealFrac (SoftFloat fs) where
     let (s, ex) = decodeFloat sf
     in (fromIntegral (shift s ex), encodeFloat (s .&. complement (shift (-1) (-ex))) ex)
 
-taylor :: (Eq f, RealFloat f) => [Rational] -> (Rational -> Rational) -> Rational -> f
-taylor coeffs bound x = expand 0 (zip coeffs (zipWith (/) (iterate (x*) 1) (scanl (*) 1 [1..])))
-  where m = bound x
-        expand s ((c, d) : cds) = 
+taylor :: (Eq f, RealFloat f) => [Rational] -> (Rational -> [Rational]) -> Rational -> f
+taylor coeffs bounds x = expand 0 1 1 coeffs (bounds x)
+  where expand s d kNext (c:cs) (m:ms) = 
           let s' = s + c*d 
-              [ex0, ex1] = [ fromRational (s' + m * d') | d' <- [d, -d] ]
+              extreme d = fromRational (s' + m * d)
+              ex0 = extreme d
+              ex1 = extreme (-d)
           in 
-          if ex0 == ex1 && isNegativeZero ex0 == isNegativeZero ex1 then ex0 else expand s' cds
+          if ex0 == ex1 && isNegativeZero ex0 == isNegativeZero ex1
+           then ex0
+           else expand s' (d*x/kNext) (kNext+1) cs ms
 
 instance HasSizes fs => Floating (SoftFloat fs) where
   exp sf@(SoftFloat _ (NaN _ _)) = quietNaN sf
   exp sf@(SoftFloat False Infinity) = sf
   exp (SoftFloat True Infinity) = SoftFloat False Zero
-  exp sf@(SoftFloat s _) | abs(sf) > encodeFloat (bit (exponentBits (sizes :: Sizes fs))) 0 = 
+  exp sf@(SoftFloat s _) | abs(sf) > encodeFloat 3 (exponentBits (sizes :: Sizes fs) - 3) = 
     SoftFloat False (if s then Zero else Infinity)
-  exp sf = taylor (repeat 1) (\x -> 4^(ceiling (max 0 x))) . toRational $ sf
+  exp sf = taylor (repeat 1) (\x -> repeat (2.72^(ceiling (abs x)))) . toRational $ sf
+
+  sinh sf@(SoftFloat _ (NaN _ _)) = quietNaN sf
+  sinh sf@(SoftFloat _ Infinity) = sf
+  sinh sf@(SoftFloat _ Zero) = sf
+  sinh sf@(SoftFloat s _) | abs(sf) > encodeFloat (bit (exponentBits (sizes :: Sizes fs))) 0 = 
+    SoftFloat s Infinity
+  sinh sf = taylor (cycle [0,1]) (\x -> repeat (let etx = 2.72^(ceiling (abs x)) in (etx + 1/etx)/2)) . toRational $ sf
 
 data RoundingMode
   = RoundToNearestTiesToEven
@@ -334,7 +357,7 @@ flipRounding r = r
 instance HasSizes fs => RealFloat (SoftFloat fs) where
   floatRadix _ = 2
   floatDigits _ = fractionBits (sizes :: Sizes fs) + 1
-  floatRange _ = let m = shiftL 1 (exponentBits (sizes :: Sizes fs) - 1) in (3 - m, m)
+  floatRange _ = let m = bit (exponentBits (sizes :: Sizes fs) - 1) in (3 - m, m)
   decodeFloat f = if sign f 
    then let (s, ex) = decodeFloat (f { sign = False }) in (-s, ex)
    else
