@@ -54,7 +54,7 @@ floatlyClose x y =
   in 
     x == y || abs (i x - i y) <= 1
 
-instance HasSizes fs => Arbitrary (SoftFloat fs) where
+instance (RoundingMode rm, HasSizes fs) => Arbitrary (SoftFloat rm fs) where
   arbitrary = do
     let Sizes eb fb = sizes :: Sizes fs
         m = 2^(eb - 1)
@@ -77,27 +77,32 @@ instance HasSizes fs => Show (FBits fs) where
 tests = testGroup "SoftFloat" [
   testGroup "like hardware" $
     let testSize :: forall fs . (
-                      Show (HardFloat fs), 
-                      RealFloat (HardFloat fs),
-                      Storable (HardFloat fs), 
+                      Show (HardFloat RMNearestTiesToEven fs), 
+                      RealFloat (HardFloat RMNearestTiesToEven fs),
+                      Storable (HardFloat RMNearestTiesToEven fs), 
                       HasSizes fs
-                    ) => fs -> Test
-        testSize fs = 
+                    ) => String -> fs -> Test
+        testSize name fs = 
           let
             fbits :: (Storable rf, RealFloat rf) => rf -> IO (FBits fs)
             fbits rf = FBits <$> storeBytes rf
             sz@(Sizes eb fb) = sizes :: Sizes fs
             arbWs = oneof [
                      vectorOf ((eb + fb + 1) `div` 8) arbitrary,
-                     toBytes <$> (arbitrary :: Gen (SoftFloat fs))
+                     toBytes <$> (arbitrary :: Gen (SoftFloat RMNearestTiesToEven fs))
                     ]
             showBits = showFloatBits sz
-            testUnaryMember :: (Eq a, Show a) => String -> (forall rf . (Storable rf, RealFloat rf) => rf -> IO a) -> Test
+            boring :: forall rf a . (Storable rf, RealFloat rf) => (rf -> IO a) -> (rf -> IO a)
+            boring = (. \f -> if (isNaN f || isInfinite f) then 0 else f)
+            testUnaryMember :: (Eq a, Show a)
+                               => String
+                               -> (forall rf . (Storable rf, RealFloat rf) => rf -> IO a)
+                               -> Test
             testUnaryMember s f = testProperty s $ forAll arbWs $ \ws -> 
               morallyDubiousIOProperty $ do
-                soft <- loadBytes ws :: IO (SoftFloat fs)
+                soft <- loadBytes ws :: IO (SoftFloat RMNearestTiesToEven fs)
                 fSoft <- f soft
-                hard <- loadBytes ws :: IO (HardFloat fs)
+                hard <- loadBytes ws :: IO (HardFloat RMNearestTiesToEven fs)
                 fHard <- f hard
                 return $ if fSoft == fHard
                   then succeeded
@@ -109,13 +114,16 @@ tests = testGroup "SoftFloat" [
                                  ++ "but got:  " ++ show (fSoft) ++ "\n" 
                     }
               
-            testBinaryMember :: (Eq a, Show a) => String -> (forall rf . (Storable rf, RealFloat rf) => rf -> rf -> IO a) -> Test
+            testBinaryMember :: (Eq a, Show a)
+                                => String
+                                -> (forall rf . (Storable rf, RealFloat rf) => rf -> rf -> IO a)
+                                -> Test
             testBinaryMember s f = testProperty s $ forAll ((,) <$> arbWs <*> arbWs) $ \(ws0, ws1) -> 
               morallyDubiousIOProperty $ do
-                soft0 <- loadBytes ws0 :: IO (SoftFloat fs)
-                soft1 <- loadBytes ws1 :: IO (SoftFloat fs)
-                hard0 <- loadBytes ws0 :: IO (HardFloat fs)
-                hard1 <- loadBytes ws1 :: IO (HardFloat fs)
+                soft0 <- loadBytes ws0 :: IO (SoftFloat RMNearestTiesToEven fs)
+                soft1 <- loadBytes ws1 :: IO (SoftFloat RMNearestTiesToEven fs)
+                hard0 <- loadBytes ws0 :: IO (HardFloat RMNearestTiesToEven fs)
+                hard1 <- loadBytes ws1 :: IO (HardFloat RMNearestTiesToEven fs)
                 fSoft <- f soft0 soft1
                 fHard <- f hard0 hard1
                 return $ if fSoft == fHard
@@ -129,7 +137,7 @@ tests = testGroup "SoftFloat" [
                                  ++ "but got:  " ++ show fSoft ++ "\n" 
                     }
 
-          in testGroup (show sz) [
+          in testGroup name [
              testGroup "Num" [
                testBinaryMember "+" $ ((.).(.)) fbits (+),
                testBinaryMember "*" $ ((.).(.)) fbits (*),
@@ -155,10 +163,7 @@ tests = testGroup "SoftFloat" [
                testBinaryMember "/" $ ((.).(.)) fbits (/),
                testUnaryMember "recip" $ fbits . recip
               ],
-             testGroup "RealFrac" $ 
-              let boring :: forall rf a . (Storable rf, RealFloat rf) => (rf -> IO a) -> (rf -> IO a)
-                  boring = (. \f -> if (isNaN f || isInfinite f) then 0 else f)
-              in [
+             testGroup "RealFrac" $ [
                testUnaryMember "properFraction" $ boring $ \f -> do
                  let (integerPart, fraction) = properFraction f
                  fractionBits <- fbits $ if isNegativeZero fraction then 0 else fraction
@@ -169,8 +174,17 @@ tests = testGroup "SoftFloat" [
                testUnaryMember "floor" $ boring $ return . floor
               ],
              testGroup "Floating" [
+               testCase "pi" $ do
+                 sBytes <- storeBytes (pi :: SoftFloat RMNearestTiesToEven fs)
+                 hBytes <- storeBytes (pi :: HardFloat RMNearestTiesToEven fs)
+                 sBytes @?= hBytes,
                testUnaryMember "exp" $ fbits . exp,
-               testUnaryMember "sinh" $ fbits . sinh
+               testUnaryMember "log" $ fbits . \f -> if isNegativeZero f then f else log f,
+               testUnaryMember "sin" $ fbits . sin,
+               testUnaryMember "asin" $ fbits . asin,
+               testUnaryMember "cos" $ fbits . cos,
+               testUnaryMember "sinh" $ fbits . sinh,
+               testUnaryMember "cosh" $ fbits . cosh
               ],
              testGroup "RealFloat" [
                testUnaryMember "floatRadix" $ return . floatRadix,
@@ -180,8 +194,8 @@ tests = testGroup "SoftFloat" [
                  if (isNaN f || isInfinite f) then Nothing else Just (decodeFloat f),
 
                testProperty "encodeFloat" $ \s ex -> morallyDubiousIOProperty $ do
-                 let soft = encodeFloat s ex :: SoftFloat fs
-                     hard = encodeFloat s ex :: HardFloat fs
+                 let soft = encodeFloat s ex :: SoftFloat RMNearestTiesToEven fs
+                     hard = encodeFloat s ex :: HardFloat RMNearestTiesToEven fs
                  sBytes <- storeBytes soft
                  hBytes <- storeBytes hard
                  return $ if abs ex > 2^20 || floatlyClose sBytes hBytes
@@ -203,18 +217,19 @@ tests = testGroup "SoftFloat" [
               ]
            ]
     in [
-      testSize (FSSingle ()),
-      testSize (FSDouble ())
+      testSize "single" (FSSingle ()),
+      testSize "double" (FSDouble ())
      ],
     testGroup "regressions" [
       testCase "encodeFloat rounding" $ do
         let sz = sizes :: Sizes FSSingle
             f a b s = do
-              ws <- storeBytes (encodeFloat a b :: SoftFloat FSSingle)
+              ws <- storeBytes (encodeFloat a b :: SoftFloat RMNearestTiesToEven FSSingle)
               showFloatBits sz ws @?= s
-  --      f (bit 23 - 1) (-149) "0 00000000 111 1111 1111 1111 1111 1111"
-        f (bit 24 - 1) (-150) "0 00000001 000 0000 0000 0000 0000 0000",
-  --      f 3 (-151) "0 00000000 000 0000 0000 0000 0000 0001",
+--        f (bit 23 - 1) (-149) "0 00000000 111 1111 1111 1111 1111 1111"
+--        f (bit 24 - 1) (-150) "0 00000001 000 0000 0000 0000 0000 0000"
+--        f 3 (-151) "0 00000000 000 0000 0000 0000 0000 0001"
+        f 1 0 "0 01111111 000 0000 0000 0000 0000 0000",
       testCase "Add rounding" $ do
         let sz = sizes :: Sizes FSSingle
             l :: Storable s => String -> IO s
@@ -224,8 +239,8 @@ tests = testGroup "SoftFloat" [
               a <- l "0 00000000 000 0000 0000 0000 0000 0001"
               b <- l "0 00000010 000 0000 0000 0000 0000 0001"
               return $ a + b
-        h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
-        s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
+        h <- storeBytes =<< (pl :: IO (HardFloat RMNearestTiesToEven FSSingle))
+        s <- storeBytes =<< (pl :: IO (SoftFloat RMNearestTiesToEven FSSingle))
         showFloatBits sz s @?= showFloatBits sz h,
       testCase "Subtract" $ do
         let sz = sizes :: Sizes FSSingle
@@ -236,33 +251,28 @@ tests = testGroup "SoftFloat" [
               a <- l "0 00000100 000 0000 0000 0000 0000 0000"
               b <- l "0 00000000 000 0000 0000 0000 0000 0001"
               return $ a - b
-        h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
-        s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
+        h <- storeBytes =<< (pl :: IO (HardFloat RMNearestTiesToEven FSSingle))
+        s <- storeBytes =<< (pl :: IO (SoftFloat RMNearestTiesToEven FSSingle))
         showFloatBits sz s @?= showFloatBits sz h,
-      testCase "Multiply rounding" $ do
-        let sz = sizes :: Sizes FSSingle
-            l :: Storable s => String -> IO s
-            l = loadBytes . readBits 
-            pl :: (RealFloat f, Storable f) => IO f
-            pl = do
-              a <- l "0 01011001 001 0000 1110 0110 0111 0000"
-              b <- l "1 00001111 011 1100 0110 0100 0001 0110"
-              return $ a * b
-        h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
-        s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
-        showFloatBits sz s @?= showFloatBits sz h,
-      testCase "Multiply infinity" $ do
-        let sz = sizes :: Sizes FSSingle
-            l :: Storable s => String -> IO s
-            l = loadBytes . readBits 
-            pl :: (RealFloat f, Storable f) => IO f
-            pl = do
-              a <- l "0 11111111 000 0000 0000 0000 0000 0000"
-              b <- l "0 11111111 000 0000 0000 0000 0000 0000"
-              return $ a * b
-        h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
-        s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
-        showFloatBits sz s @?= showFloatBits sz h,
+      testGroup "Multiply" [
+        testCase name $ do
+          let sz = sizes :: Sizes FSSingle
+              l :: Storable s => String -> IO s
+              l = loadBytes . readBits 
+              pl :: (RealFloat f, Storable f) => IO f
+              pl = do
+                a <- l as
+                b <- l bs
+                return $ a * b
+          h <- storeBytes =<< (pl :: IO (HardFloat RMNearestTiesToEven FSSingle))
+          s <- storeBytes =<< (pl :: IO (SoftFloat RMNearestTiesToEven FSSingle))
+          showFloatBits sz s @?= showFloatBits sz h
+        | (name, (as, bs)) <- zip (map show [0..]) [
+          ("0 01011001 001 0000 1110 0110 0111 0000", "1 00001111 011 1100 0110 0100 0001 0110"),
+          ("0 11111111 000 0000 0000 0000 0000 0000", "0 11111111 000 0000 0000 0000 0000 0000"),
+          ("0 01000001 010 1010 0100 1011 0110 1011", "0 00100110 101 1000 0101 0011 0000 1100")
+         ]
+       ],
       testCase "Divide rounding" $ do
         let sz = sizes :: Sizes FSSingle
             l :: Storable s => String -> IO s
@@ -272,16 +282,16 @@ tests = testGroup "SoftFloat" [
               a <- l "0 01100010 110 0010 0111 0011 0111 0100"
               b <- l "0 00000000 000 0010 0000 0010 0000 0010"
               return $ a / b
-        h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
-        s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
+        h <- storeBytes =<< (pl :: IO (HardFloat RMNearestTiesToEven FSSingle))
+        s <- storeBytes =<< (pl :: IO (SoftFloat RMNearestTiesToEven FSSingle))
         showFloatBits sz s @?= showFloatBits sz h,
       testGroup "fromRational" [
         testCase name $ do
           let sz = sizes :: Sizes FSSingle
               pl :: Fractional f => f
               pl = fromRational rat
-          h <- storeBytes (pl :: HardFloat FSSingle)
-          s <- storeBytes (pl :: SoftFloat FSSingle)
+          h <- storeBytes (pl :: HardFloat RMNearestTiesToEven FSSingle)
+          s <- storeBytes (pl :: SoftFloat RMNearestTiesToEven FSSingle)
           showFloatBits sz s @?= showFloatBits sz h
         | (name, rat) <- zip (map show [0..]) [
             (bit 141 + 1) % bit 141,
@@ -298,8 +308,8 @@ tests = testGroup "SoftFloat" [
                 pl = do
                   a <- l bits
                   return $ exp a
-            h <- storeBytes =<< (pl :: IO (HardFloat FSSingle))
-            s <- storeBytes =<< (pl :: IO (SoftFloat FSSingle))
+            h <- storeBytes =<< (pl :: IO (HardFloat RMNearestTiesToEven FSSingle))
+            s <- storeBytes =<< (pl :: IO (SoftFloat RMNearestTiesToEven FSSingle))
             showFloatBits sz s @?= showFloatBits sz h
           | (name, bits) <- zip (map show [0..]) [
               "0 00000000 000 0000 0000 0001 0000 0000",
@@ -309,22 +319,9 @@ tests = testGroup "SoftFloat" [
               "1 10000001 001 0010 0010 0000 1010 0001",
               "0 10000000 001 0101 0001 0011 0010 0101",
               "1 10000110 011 1011 0010 1110 1111 0111",
+              "1 10000101 100 1010 0111 0100 0000 1000",
+              "1 10000011 010 0010 0110 1101 0010 0101",
               "1 01111111 111 0010 1011 1011 0101 1100" -- this case hits an OS X expf rounding bug
-            ]
-         ],
-        testGroup "double" [
-          testCase name $ do
-            let sz = sizes :: Sizes FSDouble
-                l :: Storable s => String -> IO s
-                l = loadBytes . readBits 
-                pl :: (RealFloat f, Storable f) => IO f
-                pl = do
-                  a <- l bits
-                  return $ exp a
-            h <- storeBytes =<< (pl :: IO (HardFloat FSDouble))
-            s <- storeBytes =<< (pl :: IO (SoftFloat FSDouble))
-            showFloatBits sz s @?= showFloatBits sz h
-          | (name, bits) <- zip (map show [0..]) [
             ]
          ]
        ]
