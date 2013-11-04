@@ -2,6 +2,7 @@
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IRReader/IRReader.h"
 #include "llvm-c/Core.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Bitcode/ReaderWriter.h"
@@ -66,6 +67,10 @@ LLVMBool LLVM_General_WriteBitcodeToFile(LLVMModuleRef m, const char *path, char
 
   WriteBitcodeToFile(unwrap(m), OS);
   return 0;
+}
+
+LLVMModuleRef LLVM_General_ParseIRFile(LLVMContextRef context, const char *path, SMDiagnostic *error) {
+	return wrap(ParseIRFile(path, *error, *unwrap(context)));
 }
 
 }
