@@ -359,7 +359,7 @@ taylor coeffs bounds x = expand 0 1 1 coeffs bounds
                -> [Rational] -- taylor coeffs, starting w/ kth
                -> [Rational] -- remainder bounds, starting w/ kth
                -> ImprovingSequence
-        expand _ _ 200 _ _ = error "kNext too far"
+        expand _ _ 200 _ _ = 0 -- error "kNext too far"
         expand s d k' (c:cs) (m:ms) =
           let s' = s + (fromRational c)*d in
           Stream (s' + d * mkRange [ m, -m ]) (expand s' (d*x/(fromIntegral k')) (k'+1) cs ms)
@@ -438,7 +438,7 @@ instance (RoundingMode rm, HasSizes fs) => Floating (SoftFloat rm fs) where
   sin sf = limit . sinImp . toRational $ sf
 
   asin sf@(SoftFloat _ (NaN _ _)) = quietNaN sf
-  asin sf | abs sf > 1 = SoftFloat False (NaN True 0)
+  asin sf | abs sf > 1 = SoftFloat True (NaN True 0)
   asin sf@(SoftFloat _ Zero) = sf
   asin sf = limit . invert (Range [-2,2]) (\x -> if limitBy (abs x <=) (==) (tauImp/4) then sinImp x else fromRational x + fromRational (signum x) * (tauImp / 4 - 1)) . toRational $ sf
 
