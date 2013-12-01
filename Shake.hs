@@ -37,7 +37,7 @@ import Text.Parsec
 import Text.Parsec.String
 import Data.Version
 
-llvmVersion = "3.4svn"
+llvmVersion = "3.4"
 llvmDir = "out" </> ("llvm-" ++ llvmVersion)
 pkgName = "llvm-general"
 
