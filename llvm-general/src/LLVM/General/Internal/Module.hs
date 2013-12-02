@@ -92,6 +92,19 @@ withModuleFromString (Context c) s f = flip runAnyContT return $ do
   when (m == nullPtr) $ throwError . Right =<< liftIO (getDiagnostic smDiag)
   liftIO $ f (Module m)
 
+-- | parse 'Module' from LLVM assembly or bitcode file
+withModuleFromIRFile :: Context -> FilePath -> (Module -> IO a) -> ErrorT (Either String Diagnostic) IO a
+withModuleFromIRFile (Context c) s f = flip runAnyContT return $ do
+  s <- encodeM s
+  smDiag <- anyContToM withSMDiagnostic
+  m <- anyContToM $ bracket (FFI.parseIRFile c s smDiag) FFI.disposeModule
+  when (m == nullPtr) $ throwError . Right =<< liftIO (getDiagnostic smDiag)
+  liftIO $ f (Module m)
+
+parseASTFromIRFile :: FilePath -> ErrorT (Either String Diagnostic) IO A.Module
+parseASTFromIRFile path = do
+  ErrorT $ withContext $ \c -> runErrorT $ withModuleFromIRFile c path moduleAST
+
 -- | generate LLVM assembly from a 'Module'
 moduleString :: Module -> IO String
 moduleString (Module m) = decodeM =<< FFI.getModuleAssembly m

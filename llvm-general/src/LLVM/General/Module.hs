@@ -5,6 +5,8 @@ module LLVM.General.Module (
     withModuleFromAST,
     moduleAST,
     withModuleFromString,
+    withModuleFromIRFile,
+    parseASTFromIRFile,
     moduleString,
 
     moduleAssembly,

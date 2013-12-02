@@ -7,6 +7,7 @@ import Foreign.Ptr
 import Foreign.C
 
 import LLVM.General.Internal.FFI.Context
+import LLVM.General.Internal.FFI.SMDiagnostic
 import LLVM.General.Internal.FFI.LLVMCTypes
 import LLVM.General.Internal.FFI.PtrHierarchy
 
@@ -88,6 +89,9 @@ foreign import ccall unsafe "LLVM_General_ModuleGetInlineAsm" moduleGetInlineAsm
 
 foreign import ccall unsafe "LLVM_General_WriteBitcodeToFile" writeBitcodeToFile ::
   Ptr Module -> CString -> Ptr MallocedCString -> IO LLVMBool
+
+foreign import ccall unsafe "LLVM_General_ParseIRFile" parseIRFile ::
+  Ptr Context -> CString -> Ptr SMDiagnostic -> IO (Ptr Module)
 
 foreign import ccall unsafe "LLVMLinkModules" linkModules ::
   Ptr Module -> Ptr Module -> LinkerMode -> Ptr MallocedCString -> IO LLVMBool
