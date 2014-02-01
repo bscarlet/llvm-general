@@ -293,4 +293,3 @@ withTargetLibraryInfo ::
 withTargetLibraryInfo triple f = flip runAnyContT return $ do
   triple <- encodeM triple
   liftIO $ bracket (FFI.createTargetLibraryInfo triple) FFI.disposeTargetLibraryInfo (f . TargetLibraryInfo)
-  

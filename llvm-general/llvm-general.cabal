@@ -1,5 +1,5 @@
 name: llvm-general
-version: 3.3.8.2
+version: 3.3.9.0
 license: BSD3
 license-file: LICENSE
 author: Benjamin S.Scarlet <fgthb0@greynode.net>
@@ -16,7 +16,7 @@ description:
 	handles almost all of the stateful complexities of using the LLVM API to build IR; and it supports moving IR not
 	only from Haskell into LLVM C++ objects, but the other direction - from LLVM C++ into Haskell.
   .
-  For haddock, see <http://bscarlet.github.io/llvm-general/3.3.8.2/doc/html/llvm-general/index.html>.
+  For haddock, see <http://bscarlet.github.io/llvm-general/3.3.9.0/doc/html/llvm-general/index.html>.
 extra-source-files:
   src/LLVM/General/Internal/FFI/Analysis.h
   src/LLVM/General/Internal/FFI/Constant.h
@@ -38,7 +38,7 @@ source-repository this
   type: git
   location: git://github.com/bscarlet/llvm-general.git
   branch: llvm-3.3
-  tag: v3.3.8.2
+  tag: v3.3.9.0
 
 flag shared-llvm
   description: link against llvm shared rather than static library
@@ -62,7 +62,7 @@ library
     parsec >= 3.1.3,
     array >= 0.4.0.0,
     setenv >= 0.1.0,
-    llvm-general-pure == 3.3.8.2
+    llvm-general-pure == 3.3.9.0
   extra-libraries: stdc++
   hs-source-dirs: src
   extensions:
@@ -119,6 +119,7 @@ library
     LLVM.General.Internal.Module
     LLVM.General.Internal.Operand
     LLVM.General.Internal.PassManager
+    LLVM.General.Internal.RawOStream
     LLVM.General.Internal.RMWOperation
     LLVM.General.Internal.String
     LLVM.General.Internal.Target
@@ -128,7 +129,9 @@ library
     LLVM.General.Internal.FFI.Assembly
     LLVM.General.Internal.FFI.BasicBlock
     LLVM.General.Internal.FFI.BinaryOperator
+    LLVM.General.Internal.FFI.Bitcode
     LLVM.General.Internal.FFI.Builder
+    LLVM.General.Internal.FFI.ByteRangeCallback
     LLVM.General.Internal.FFI.Cleanup
     LLVM.General.Internal.FFI.CommandLine
     LLVM.General.Internal.FFI.Constant
@@ -149,6 +152,7 @@ library
     LLVM.General.Internal.FFI.Module
     LLVM.General.Internal.FFI.PassManager
     LLVM.General.Internal.FFI.PtrHierarchy
+    LLVM.General.Internal.FFI.RawOStream
     LLVM.General.Internal.FFI.SMDiagnostic
     LLVM.General.Internal.FFI.Target
     LLVM.General.Internal.FFI.Transforms
@@ -159,6 +163,7 @@ library
   include-dirs: src
   c-sources: 
     src/LLVM/General/Internal/FFI/AssemblyC.cpp
+    src/LLVM/General/Internal/FFI/BitcodeC.cpp
     src/LLVM/General/Internal/FFI/BuilderC.cpp
     src/LLVM/General/Internal/FFI/ConstantC.cpp
     src/LLVM/General/Internal/FFI/CommandLineC.cpp
@@ -170,6 +175,7 @@ library
     src/LLVM/General/Internal/FFI/InstructionC.cpp
     src/LLVM/General/Internal/FFI/MetadataC.cpp
     src/LLVM/General/Internal/FFI/ModuleC.cpp
+    src/LLVM/General/Internal/FFI/RawOStreamC.cpp
     src/LLVM/General/Internal/FFI/PassManagerC.cpp
     src/LLVM/General/Internal/FFI/SMDiagnosticC.cpp
     src/LLVM/General/Internal/FFI/TargetC.cpp
@@ -188,8 +194,8 @@ test-suite test
     HUnit >= 1.2.4.2,
     test-framework-quickcheck2 >= 0.3.0.1,
     QuickCheck >= 2.5.1.1,
-    llvm-general == 3.3.8.2,
-    llvm-general-pure == 3.3.8.2,
+    llvm-general == 3.3.9.0,
+    llvm-general-pure == 3.3.9.0,
     containers >= 0.4.2.1,
     mtl >= 2.0.1.0
   hs-source-dirs: test
