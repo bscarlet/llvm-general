@@ -6,6 +6,9 @@
 #include "llvm/Transforms/Vectorize.h"
 #include "llvm/Transforms/Instrumentation.h"
 #include "llvm/PassManager.h"
+#include "llvm-c/Target.h"
+#include "llvm-c/Transforms/PassManagerBuilder.h"
+#include "llvm/Target/TargetLibraryInfo.h"
 
 #include "llvm-c/Core.h"
 
@@ -23,6 +26,16 @@ inline TargetLowering *unwrap(LLVMTargetLoweringRef P) {
 
 inline LLVMTargetLoweringRef wrap(const TargetLowering *P) { 
 	return reinterpret_cast<LLVMTargetLoweringRef>(const_cast<TargetLowering *>(P));
+}
+
+// Taken from llvm/lib/Target/Target.cpp
+inline TargetLibraryInfo *unwrap(LLVMTargetLibraryInfoRef P) {
+  return reinterpret_cast<TargetLibraryInfo*>(P);
+}
+
+// Taken from llvm/lib/Transforms/IPO/PassManagerBuilder.cpp
+inline PassManagerBuilder *unwrap(LLVMPassManagerBuilderRef P) {
+    return reinterpret_cast<PassManagerBuilder*>(P);
 }
 }
 
@@ -209,6 +222,16 @@ void LLVM_General_AddThreadSanitizerPass(
 
 void LLVM_General_AddBoundsCheckingPass(LLVMPassManagerRef PM) {
 	unwrap(PM)->add(createBoundsCheckingPass());
+}
+
+void
+LLVM_General_PassManagerBuilderSetLibraryInfo(
+    LLVMPassManagerBuilderRef PMB,
+    LLVMTargetLibraryInfoRef l
+) {
+  // The PassManager frees the TargetLibraryInfo when done,
+  // but we also free our ref, so give it a new copy.
+  unwrap(PMB)->LibraryInfo = new TargetLibraryInfo(*unwrap(l));
 }
 
 }
