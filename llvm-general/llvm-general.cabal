@@ -82,6 +82,7 @@ library
     LLVM.General.Context
     LLVM.General.Diagnostic
     LLVM.General.ExecutionEngine
+    LLVM.General.LibraryFunction
     LLVM.General.Module
     LLVM.General.PassManager
     LLVM.General.Relocation
@@ -114,6 +115,7 @@ library
     LLVM.General.Internal.Instruction
     LLVM.General.Internal.InstructionDefs
     LLVM.General.Internal.IntegerPredicate
+    LLVM.General.Internal.LibraryFunction
     LLVM.General.Internal.MemoryBuffer
     LLVM.General.Internal.Metadata
     LLVM.General.Internal.Module
