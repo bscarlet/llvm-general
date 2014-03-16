@@ -20,6 +20,7 @@ import Foreign.Ptr
 
 import qualified LLVM.General.Internal.FFI.PassManager as FFI
 import qualified LLVM.General.Internal.FFI.Transforms as FFI
+import qualified LLVM.General.Internal.FFI.Target as FFI
 
 import LLVM.General.Internal.Module
 import LLVM.General.Internal.Target
@@ -44,7 +45,7 @@ data PassSetSpec
       transforms :: [Pass],
       dataLayout :: Maybe DataLayout,
       targetLibraryInfo :: Maybe TargetLibraryInfo,
-      targetLowering :: Maybe TargetLowering
+      targetMachine :: Maybe TargetMachine
     }
   -- | This type is a high-level specification of a set of passes. It uses the same
   -- collection of passes chosen by the LLVM team in the command line tool 'opt'.  The fields
@@ -73,7 +74,7 @@ defaultPassSetSpec = PassSetSpec {
   transforms = [],
   dataLayout = Nothing,
   targetLibraryInfo = Nothing,
-  targetLowering = Nothing
+  targetMachine = Nothing
 }
 
 instance (Monad m, MonadAnyCont IO m) => EncodeM m GCOVVersion CString where
@@ -95,8 +96,8 @@ createPassManager pss = flip runAnyContT return $ do
           (Just (TargetLibraryInfo tl)) -> FFI.passManagerBuilderSetLibraryInfo b tl
           Nothing -> return ()
         FFI.passManagerBuilderPopulateModulePassManager b pm
-    PassSetSpec ps dl tli tl' -> do
-      let tl = maybe nullPtr (\(TargetLowering tl) -> tl) tl'
+    PassSetSpec ps dl tli tm' -> do
+      tl <- liftIO $ maybe (return nullPtr) (\(TargetMachine tm) -> FFI.getTargetLowering tm) tm'
       forM_ tli $ \(TargetLibraryInfo tli) -> do
         liftIO $ FFI.addTargetLibraryInfoPass pm tli
       forM_ dl $ \dl -> liftIO $ withFFIDataLayout dl $ FFI.addDataLayoutPass pm 

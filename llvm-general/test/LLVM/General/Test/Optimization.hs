@@ -300,8 +300,7 @@ tests = testGroup "Optimization" [
         withTargetOptions $ \targetOptions -> do
           withTargetMachine target triple "" Set.empty targetOptions
                             R.Default CM.Default CGO.Default $ \tm -> do
-            tl <- getTargetLowering tm
-            withPassManager (defaultPassSetSpec { transforms = [LowerInvoke False], targetLowering = Just tl}) $ \passManager -> do
+            withPassManager (defaultPassSetSpec { transforms = [LowerInvoke False], targetMachine = Just tm}) $ \passManager -> do
               let astIn = 
                     Module "<string>" Nothing Nothing [
                       GlobalDefinition $ functionDefaults {
