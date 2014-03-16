@@ -9,6 +9,7 @@
 #include "llvm-c/Target.h"
 #include "llvm-c/Transforms/PassManagerBuilder.h"
 #include "llvm/Target/TargetLibraryInfo.h"
+#include "llvm/Target/TargetMachine.h"
 
 #include "llvm-c/Core.h"
 
@@ -17,6 +18,7 @@ using namespace llvm;
 extern "C" {
 typedef struct LLVMOpaqueVectorizationConfig *LLVMVectorizationConfigRef;
 typedef struct LLVMOpaqueTargetLowering *LLVMTargetLoweringRef;
+typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
 }
 
 namespace llvm {
@@ -26,6 +28,14 @@ inline TargetLowering *unwrap(LLVMTargetLoweringRef P) {
 
 inline LLVMTargetLoweringRef wrap(const TargetLowering *P) { 
 	return reinterpret_cast<LLVMTargetLoweringRef>(const_cast<TargetLowering *>(P));
+}
+
+inline TargetMachine *unwrap(LLVMTargetMachineRef P) {
+	return reinterpret_cast<TargetMachine*>(P);
+}
+
+inline LLVMTargetMachineRef wrap(const TargetMachine *P) {
+	return reinterpret_cast<LLVMTargetMachineRef>(const_cast<TargetMachine *>(P));
 }
 
 // Taken from llvm/lib/Target/Target.cpp
@@ -43,6 +53,10 @@ extern "C" {
 
 void LLVM_General_AddDataLayoutPass(LLVMPassManagerRef PM, const char *dl) {
 	unwrap(PM)->add(new DataLayout(dl));
+}
+
+void LLVM_General_LLVMAddAnalysisPasses(LLVMTargetMachineRef T, LLVMPassManagerRef PM) {
+	unwrap(T)->addAnalysisPasses(*unwrap(PM));
 }
 
 #define LLVM_GENERAL_FOR_EACH_PASS_WITHOUT_LLVM_C_BINDING(macro) \
