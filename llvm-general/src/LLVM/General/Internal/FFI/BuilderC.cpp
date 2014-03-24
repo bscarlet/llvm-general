@@ -90,16 +90,18 @@ LLVM_GENERAL_FOR_ALL_POSSIBLY_EXACT_OPERATORS(ENUM_CASE)
 #define ENUM_CASE(Op) \
 LLVMValueRef LLVM_General_Build ## Op( \
 	LLVMBuilderRef b, \
-	LLVMBool fast, \
+	int fmflags, \
 	LLVMValueRef o0, \
 	LLVMValueRef o1, \
 	const char *s \
 ) {	\
-    if (fast) { \
-        FastMathFlags ff = FastMathFlags(); \
-	    ff.setUnsafeAlgebra(); \
-	    unwrap(b)->SetFastMathFlags(ff); \
-	} \
+	FastMathFlags ff = FastMathFlags(); \
+    if (0 != (fmflags & UnsafeAlgebra)) ff.setUnsafeAlgebra(); \
+    if (0 != (fmflags & NoNaNs)) ff.setNoNaNs(); \
+    if (0 != (fmflags & NoInfs)) ff.setNoInfs(); \
+    if (0 != (fmflags & NoSignedZeros)) ff.setNoSignedZeros(); \
+    if (0 != (fmflags & AllowReciprocal)) ff.setAllowReciprocal(); \
+	unwrap(b)->SetFastMathFlags(ff); \
 	Value *i = unwrap(b)->Create ## Op(unwrap(o0), unwrap(o1), s); \
 	unwrap(b)->clearFastMathFlags(); \
 	return wrap(i); \
