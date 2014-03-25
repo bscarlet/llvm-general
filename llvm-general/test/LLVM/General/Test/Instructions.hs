@@ -101,6 +101,46 @@ tests = testGroup "Instructions" [
              metadata = [] 
            },
            "fadd float %1, %1"),
+          ("fadd nnan",
+           FAdd {
+             fmflags = FastMathFlags [NNaN],
+             operand0 = a 1,
+             operand1 = a 1,
+             metadata = [] 
+           },
+           "fadd nnan float %1, %1"),
+          ("fadd ninf",
+           FAdd {
+             fmflags = FastMathFlags [NInf],
+             operand0 = a 1,
+             operand1 = a 1,
+             metadata = [] 
+           },
+           "fadd ninf float %1, %1"),
+          ("fadd nsz",
+           FAdd {
+             fmflags = FastMathFlags [NSZ],
+             operand0 = a 1,
+             operand1 = a 1,
+             metadata = [] 
+           },
+           "fadd nsz float %1, %1"),
+          ("fadd arcp",
+           FAdd {
+             fmflags = FastMathFlags [ARcp],
+             operand0 = a 1,
+             operand1 = a 1,
+             metadata = [] 
+           },
+           "fadd arcp float %1, %1"),
+          ("fadd fast",
+           FAdd {
+             fmflags = FastMathFlags [Fast],
+             operand0 = a 1,
+             operand1 = a 1,
+             metadata = [] 
+           },
+           "fadd fast float %1, %1"),
           ("sub",
            Sub {
              nsw = False,
@@ -118,6 +158,14 @@ tests = testGroup "Instructions" [
              metadata = [] 
            },
            "fsub float %1, %1"),
+          ("fsub nnan ninf",
+           FSub {
+             fmflags = FastMathFlags [NNaN,NInf],
+             operand0 = a 1,
+             operand1 = a 1,
+             metadata = [] 
+           },
+           "fsub nnan ninf float %1, %1"),
           ("mul",
            Mul {
              nsw = False,
@@ -135,6 +183,14 @@ tests = testGroup "Instructions" [
              metadata = [] 
            },
            "fmul float %1, %1"),
+          ("fmul ninf nsz",
+           FMul {
+             fmflags = FastMathFlags [NInf,NSZ],
+             operand0 = a 1,
+             operand1 = a 1,
+             metadata = [] 
+           },
+           "fmul ninf nsz float %1, %1"),
           ("udiv",
            UDiv {
              exact = False,
@@ -167,6 +223,14 @@ tests = testGroup "Instructions" [
              metadata = [] 
            },
            "fdiv float %1, %1"),
+          ("fdiv nsz arcp",
+           FDiv {
+             fmflags = FastMathFlags [NSZ,ARcp],
+             operand0 = a 1,
+             operand1 = a 1,
+             metadata = [] 
+           },
+           "fdiv nsz arcp float %1, %1"),
           ("urem",
            URem {
              operand0 = a 0,
@@ -189,6 +253,14 @@ tests = testGroup "Instructions" [
              metadata = [] 
            },
            "frem float %1, %1"),
+          ("frem nnan ninf nsz arcp",
+           FRem {
+             fmflags = FastMathFlags [NNaN,NInf,NSZ,ARcp],
+             operand0 = a 1,
+             operand1 = a 1,
+             metadata = [] 
+           },
+           "frem nnan ninf nsz arcp float %1, %1"),
           ("shl",
            Shl {
              nsw = False,
