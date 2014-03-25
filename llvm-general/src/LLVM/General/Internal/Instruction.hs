@@ -242,7 +242,10 @@ instance Monad m => DecodeM m A.FastMathFlags FFI.FMFlags where
     let nsz = if 0 /= FFI.unFMFlags FFI.noSignedZeros .&. flags then [A.NSZ] else []
     let arcp = if 0 /= FFI.unFMFlags FFI.allowReciprocal .&. flags then [A.ARcp] else []
     let unsafe = if 0 /= FFI.unFMFlags FFI.unsafeAlgebra .&. flags then [A.Fast] else []
-    return $ A.FastMathFlags (nnan ++ ninf ++ nsz ++ arcp ++ unsafe) 
+    let flags = case unsafe of
+                   [A.Fast] -> [A.Fast]
+                   []       -> nnan ++ ninf ++ nsz ++ arcp
+    return $ A.FastMathFlags flags
 
 $(do
   let findInstrFields s = Map.findWithDefault (error $ "instruction missing from AST: " ++ show s) s
