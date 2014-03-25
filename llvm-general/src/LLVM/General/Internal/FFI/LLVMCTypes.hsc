@@ -106,6 +106,16 @@ newtype FCmpPredicate = FCmpPredicate CUInt
 newtype MDKindID = MDKindID CUInt
   deriving (Storable)
 
+newtype FMFlags = FMFlags { unFMFlags :: CUInt }
+  deriving (Eq, Ord, Show, Typeable, Data)
+#{enum FMFlags, FMFlags,
+ unsafeAlgebra   = UnsafeAlgebra,
+ noNaNs          = NoNaNs,
+ noInfs          = NoInfs,
+ noSignedZeros   = NoSignedZeros,
+ allowReciprocal = AllowReciprocal
+}
+
 newtype MemoryOrdering = MemoryOrdering CUInt
   deriving (Eq, Typeable, Data)
 #define MO_Rec(n) { #n, LLVMAtomicOrdering ## n },

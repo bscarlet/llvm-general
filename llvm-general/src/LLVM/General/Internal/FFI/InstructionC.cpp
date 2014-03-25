@@ -63,6 +63,17 @@ int LLVM_General_IsExact(LLVMValueRef val) {
 	return unwrap<PossiblyExactOperator>(val)->isExact();
 }
 
+int LLVM_General_GetFMFlags(LLVMValueRef val) {
+	int res = 0;
+	FastMathFlags FMF = unwrap<Instruction>(val)->getFastMathFlags();
+	if (FMF.noNaNs()) res |= NoNaNs;
+	if (FMF.noInfs()) res |= NoInfs;
+	if (FMF.noSignedZeros()) res |= NoSignedZeros;
+	if (FMF.allowReciprocal()) res |= AllowReciprocal;
+	if (FMF.unsafeAlgebra()) res |= UnsafeAlgebra;
+	return res;
+}
+
 LLVMValueRef LLVM_General_GetCallInstCalledValue(
 	LLVMValueRef callInst
 ) {

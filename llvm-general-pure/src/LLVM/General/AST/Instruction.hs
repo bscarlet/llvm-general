@@ -65,6 +65,18 @@ data Terminator
     }
   deriving (Eq, Read, Show, Typeable, Data)
 
+-- | <http://llvm.org/docs/LangRef.html#fast-math-flags>
+data FastMathFlag
+  = NNaN
+  | NInf
+  | NSZ
+  | ARcp
+  | Fast
+  deriving (Eq, Ord, Read, Show, Data, Typeable)
+
+newtype FastMathFlags = FastMathFlags [FastMathFlag]
+  deriving (Eq, Ord, Read, Show, Data, Typeable)
+
 -- | <http://llvm.org/docs/LangRef.html#atomic-memory-ordering-constraints>
 -- <http://llvm.org/docs/Atomics.html>
 data MemoryOrdering
@@ -103,6 +115,7 @@ data Instruction
       metadata :: InstructionMetadata
     }
   | FAdd {
+      fmflags :: FastMathFlags,
       operand0 :: Operand,
       operand1 :: Operand,
       metadata :: InstructionMetadata
@@ -115,6 +128,7 @@ data Instruction
       metadata :: InstructionMetadata
     }
   | FSub { 
+      fmflags :: FastMathFlags,
       operand0 :: Operand, 
       operand1 :: Operand, 
       metadata :: InstructionMetadata
@@ -127,6 +141,7 @@ data Instruction
       metadata :: InstructionMetadata 
     }
   | FMul { 
+      fmflags :: FastMathFlags,
       operand0 :: Operand, 
       operand1 :: Operand, 
       metadata :: InstructionMetadata
@@ -144,6 +159,7 @@ data Instruction
       metadata :: InstructionMetadata
     }
   | FDiv { 
+      fmflags :: FastMathFlags,
       operand0 :: Operand, 
       operand1 :: Operand, 
       metadata :: InstructionMetadata
@@ -159,6 +175,7 @@ data Instruction
       metadata :: InstructionMetadata
     }
   | FRem { 
+      fmflags :: FastMathFlags,
       operand0 :: Operand, 
       operand1 :: Operand, 
       metadata :: InstructionMetadata

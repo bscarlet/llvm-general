@@ -98,4 +98,3 @@ instance ChildOf Value InlineAsm
 
 -- | <http://llvm.org/doxygen/classllvm_1_1Type.html>
 data Type
-

@@ -80,6 +80,35 @@ LLVMValueRef LLVM_General_Build ## Op(																	\
 LLVM_GENERAL_FOR_ALL_POSSIBLY_EXACT_OPERATORS(ENUM_CASE)
 #undef ENUM_CASE
 
+#define LLVM_GENERAL_FOR_ALL_FAST_MATH_OPERATORS(macro) \
+	macro(FAdd) \
+	macro(FSub) \
+	macro(FMul) \
+	macro(FDiv) \
+	macro(FRem) \
+
+#define ENUM_CASE(Op) \
+LLVMValueRef LLVM_General_Build ## Op( \
+	LLVMBuilderRef b, \
+	int fmflags, \
+	LLVMValueRef o0, \
+	LLVMValueRef o1, \
+	const char *s \
+) {	\
+	FastMathFlags ff = FastMathFlags(); \
+    if (0 != (fmflags & UnsafeAlgebra)) ff.setUnsafeAlgebra(); \
+    if (0 != (fmflags & NoNaNs)) ff.setNoNaNs(); \
+    if (0 != (fmflags & NoInfs)) ff.setNoInfs(); \
+    if (0 != (fmflags & NoSignedZeros)) ff.setNoSignedZeros(); \
+    if (0 != (fmflags & AllowReciprocal)) ff.setAllowReciprocal(); \
+	unwrap(b)->SetFastMathFlags(ff); \
+	Value *i = unwrap(b)->Create ## Op(unwrap(o0), unwrap(o1), s); \
+	unwrap(b)->clearFastMathFlags(); \
+	return wrap(i); \
+}
+LLVM_GENERAL_FOR_ALL_FAST_MATH_OPERATORS(ENUM_CASE)
+#undef ENUM_CASE
+
 
 LLVMValueRef LLVM_General_BuildLoad(
 	LLVMBuilderRef b,

@@ -21,6 +21,7 @@ import Foreign.Ptr
 
 import qualified Data.Map as Map
 import qualified Data.List as List
+import Data.Bits
 
 import qualified LLVM.General.Internal.FFI.PtrHierarchy as FFI
 import qualified LLVM.General.Internal.FFI.BinaryOperator as FFI
@@ -30,6 +31,7 @@ import qualified LLVM.General.Internal.FFI.User as FFI
 import qualified LLVM.General.Internal.FFI.Builder as FFI
 import qualified LLVM.General.Internal.FFI.Constant as FFI
 import qualified LLVM.General.Internal.FFI.BasicBlock as FFI
+import qualified LLVM.General.Internal.FFI.LLVMCTypes as FFI
 
 import LLVM.General.Internal.Atomicity ()
 import LLVM.General.Internal.Attribute ()
@@ -44,6 +46,7 @@ import LLVM.General.Internal.Type
 import LLVM.General.Internal.Value
 
 import qualified LLVM.General.AST as A
+import qualified LLVM.General.AST.Instruction as A
 import qualified LLVM.General.AST.Constant as A.C
 
 callInstAttr i j = liftIO $ decodeM =<< FFI.getCallInstAttr i j
@@ -223,6 +226,27 @@ instance EncodeM EncodeAST A.Terminator (Ptr FFI.Instruction) where
     setMD t' (A.metadata' t)
     return t'      
 
+instance Monad m => EncodeM m A.FastMathFlags FFI.FMFlags where
+  encodeM (A.FastMathFlags flags) = do
+    let nnan = if A.NNaN `elem` flags then FFI.unFMFlags FFI.noNaNs else 0
+    let ninf = if A.NInf `elem` flags then FFI.unFMFlags FFI.noInfs else 0
+    let nsz = if A.NSZ `elem` flags then FFI.unFMFlags FFI.noSignedZeros else 0
+    let arcp = if A.ARcp `elem` flags then FFI.unFMFlags FFI.allowReciprocal else 0
+    let unsafe = if A.Fast `elem` flags then FFI.unFMFlags FFI.unsafeAlgebra else 0
+    return $ FFI.FMFlags (nnan .|. ninf .|. nsz .|. arcp .|. unsafe) 
+
+instance Monad m => DecodeM m A.FastMathFlags FFI.FMFlags where
+  decodeM (FFI.FMFlags flags) = do
+    let nnan = if 0 /= FFI.unFMFlags FFI.noNaNs .&. flags then [A.NNaN] else []
+    let ninf = if 0 /= FFI.unFMFlags FFI.noInfs .&. flags then [A.NInf] else []
+    let nsz = if 0 /= FFI.unFMFlags FFI.noSignedZeros .&. flags then [A.NSZ] else []
+    let arcp = if 0 /= FFI.unFMFlags FFI.allowReciprocal .&. flags then [A.ARcp] else []
+    let unsafe = if 0 /= FFI.unFMFlags FFI.unsafeAlgebra .&. flags then [A.Fast] else []
+    let flags = case unsafe of
+                   [A.Fast] -> [A.Fast]
+                   []       -> nnan ++ ninf ++ nsz ++ arcp
+    return $ A.FastMathFlags flags
+
 $(do
   let findInstrFields s = Map.findWithDefault (error $ "instruction missing from AST: " ++ show s) s
                           ID.astInstructionRecs
@@ -237,6 +261,7 @@ $(do
             get_nsw b = liftIO $ decodeM =<< FFI.hasNoSignedWrap (FFI.upCast b)
             get_nuw b = liftIO $ decodeM =<< FFI.hasNoUnsignedWrap (FFI.upCast b)
             get_exact b = liftIO $ decodeM =<< FFI.isExact (FFI.upCast b)
+            get_fast b = liftIO $ decodeM =<< FFI.getFMFlags (FFI.upCast b)
 
         n <- liftIO $ FFI.getInstructionDefOpcode i
         $(
@@ -246,6 +271,7 @@ $(do
                 "nsw" -> (["b"], [| get_nsw $(TH.dyn "b") |])
                 "nuw" -> (["b"], [| get_nuw $(TH.dyn "b") |])
                 "exact" -> (["b"], [| get_exact $(TH.dyn "b") |])
+                "fmflags" -> (["b"], [| get_fast $(TH.dyn "b") |])
                 "operand0" -> ([], [| op 0 |])
                 "operand1" -> ([], [| op 1 |])
                 "address" -> ([], case lrn of "Store" -> [| op 1 |]; _ -> [| op 0 |])
@@ -538,6 +564,7 @@ $(do
                          "nsw" -> [Left [| encodeM $(TH.dyn s) |] ]
                          "nuw" -> [Left [| encodeM $(TH.dyn s) |] ]
                          "exact" -> [Left [| encodeM $(TH.dyn s) |] ]
+                         "fmflags" -> [Left [| encodeM $(TH.dyn s) |] ]
                          "metadata" -> [Right [| return () |] ]
                          _ -> error $ "unhandled instruction field " ++ show s
                      in

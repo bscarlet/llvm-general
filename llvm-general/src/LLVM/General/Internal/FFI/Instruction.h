@@ -35,4 +35,12 @@ LLVM_GENERAL_FOR_EACH_SYNCRONIZATION_SCOPE(ENUM_CASE)
 #undef ENUM_CASE
 } LLVMSynchronizationScope;
 
+typedef enum {
+    UnsafeAlgebra   = (1 << 0),
+    NoNaNs          = (1 << 1),
+    NoInfs          = (1 << 2),
+    NoSignedZeros   = (1 << 3),
+    AllowReciprocal = (1 << 4)
+} FMFlags;
+
 #endif
