@@ -2,6 +2,7 @@
 module LLVM.General.AST.Name where
 
 import Data.Data
+import Data.String
 import Data.Word
 
 {- |
@@ -30,3 +31,5 @@ data Name
     | UnName Word -- ^ a number for a nameless thing
    deriving (Eq, Ord, Read, Show, Typeable, Data)
 
+instance IsString Name where
+  fromString = Name
