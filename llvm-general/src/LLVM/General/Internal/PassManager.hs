@@ -56,7 +56,7 @@ data PassSetSpec
       unitAtATime :: Maybe Bool,
       simplifyLibCalls :: Maybe Bool,
       loopVectorize :: Maybe Bool,
-      slpVectorize :: Maybe Bool,
+      superwordLevelParallelismVectorize :: Maybe Bool,
       useInlinerWithThreshold :: Maybe Word,
       dataLayout :: Maybe DataLayout,
       targetLibraryInfo :: Maybe TargetLibraryInfo,
@@ -70,7 +70,7 @@ defaultCuratedPassSetSpec = CuratedPassSetSpec {
   unitAtATime = Nothing,
   simplifyLibCalls = Nothing,
   loopVectorize = Nothing,
-  slpVectorize = Nothing,
+  superwordLevelParallelismVectorize = Nothing,
   useInlinerWithThreshold = Nothing,
   dataLayout = Nothing,
   targetLibraryInfo = Nothing,
@@ -105,7 +105,7 @@ createPassManager pss = flip runAnyContT return $ do
         handleOption FFI.passManagerBuilderSetDisableSimplifyLibCalls (liftM not . simplifyLibCalls)
         handleOption FFI.passManagerBuilderUseInlinerWithThreshold useInlinerWithThreshold
         handleOption FFI.passManagerBuilderSetLoopVectorize loopVectorize
-        handleOption FFI.passManagerBuilderSetLoopVectorize slpVectorize
+        handleOption FFI.passManagerBuilderSetSuperwordLevelParallelismVectorize superwordLevelParallelismVectorize
         FFI.passManagerBuilderPopulateModulePassManager b pm
     PassSetSpec ps dl tli tm' -> do
       tl <- liftIO $ maybe (return nullPtr) (\(TargetMachine tm) -> FFI.getTargetLowering tm) tm'
