@@ -106,7 +106,7 @@ data Pass
       fastDependencyAnalysis :: Bool
     }
   | LoopVectorize
-  | SLPVectorize
+  | SuperwordLevelParallelismVectorize
 
   -- here begin the instrumentation passes
   | EdgeProfiler
