@@ -48,6 +48,11 @@ flag debug
   description: compile C(++) shims with debug info for ease of troubleshooting
   default: False
 
+flag lib-cpp
+  description: Link the C(++) shims with libc++ rather than libstdc++
+  default: False
+  manual: True
+
 library
   build-tools: llvm-config
   ghc-options: -fwarn-unused-imports
@@ -63,7 +68,11 @@ library
     array >= 0.4.0.0,
     setenv >= 0.1.0,
     llvm-general-pure == 3.4.4.0
-  extra-libraries: stdc++
+
+  if(!flag(lib-cpp))
+    extra-libraries: stdc++
+  if (flag(lib-cpp))
+    extra-libraries: c++
   hs-source-dirs: src
   extensions:
     TupleSections
