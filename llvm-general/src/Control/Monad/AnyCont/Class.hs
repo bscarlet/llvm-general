@@ -10,6 +10,7 @@ import Control.Monad.Trans.AnyCont (AnyContT)
 import qualified Control.Monad.Trans.AnyCont as AnyCont
 import Control.Monad.Trans.Except as Except
 import Control.Monad.Trans.State as State
+import Control.Monad.Exceptable as Epl
 
 class ScopeAnyCont m where
   scopeAnyCont :: m a -> m a
@@ -35,9 +36,15 @@ instance ScopeAnyCont m => ScopeAnyCont (StateT s m) where
 instance (Monad m, MonadAnyCont b m) => MonadAnyCont b (ExceptT e m) where
   anyContToM x = lift $ anyContToM x
 
+instance (Monad m, MonadAnyCont b m) => MonadAnyCont b (Epl.ExceptableT e m) where
+  anyContToM x = lift $ anyContToM x
+
+
 instance ScopeAnyCont m => ScopeAnyCont (ExceptT e m) where
   scopeAnyCont = mapExceptT scopeAnyCont
 
+instance ScopeAnyCont m => ScopeAnyCont (Epl.ExceptableT e m) where
+  scopeAnyCont = Epl.mapExceptableT scopeAnyCont
 
 
 
@@ -52,3 +59,6 @@ instance MonadTransAnyCont b m => MonadTransAnyCont b (StateT s m) where
 
 instance MonadTransAnyCont b m => MonadTransAnyCont b (ExceptT e m) where
   liftAnyCont c = (\c q -> ExceptT . c $ runExceptT . q) (liftAnyCont c)
+
+instance MonadTransAnyCont b m => MonadTransAnyCont b (Epl.ExceptableT e m) where
+  liftAnyCont c = (\c q -> makeExceptableT . c $ Epl.runExceptableT . q) (liftAnyCont c)
