@@ -50,13 +50,14 @@ instance Monad m => ProgramSearch (v -> p -> m (Maybe b)) where
 
 llvmProgram = (simpleProgram "llvm-config") {
   programFindLocation = programSearch (programFindLocation . simpleProgram),
-  programFindVersion = 
+  programFindVersion =
     let
       stripSuffix suf str = let r = reverse in liftM r (stripPrefix (r suf) (r str))
       svnToTag v = maybe v (++"-svn") (stripSuffix "svn" v)
       trim = dropWhile isSpace . reverse . dropWhile isSpace . reverse
+      rev v = filter (/= 'r') v
     in
-      \v p -> findProgramVersion "--version" (svnToTag . trim) v p
+      \v p -> findProgramVersion "--version" (svnToTag . trim . rev) v p
  }
 
 main = do
