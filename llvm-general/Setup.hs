@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, CPP #-}
 import Control.Exception (SomeException, try)
 import Control.Monad
 import Data.Maybe
@@ -22,7 +22,7 @@ import Distribution.System
 -- without checking they're already defined and so causes warnings.
 uncheckedHsFFIDefines = ["__STDC_LIMIT_MACROS"]
 
-llvmVersion = Version [3,5] []
+llvmVersion = Version [3,6] []
 
 llvmConfigNames = [
   "llvm-config-" ++ (intercalate "." . map show . versionBranch $ llvmVersion),
@@ -50,13 +50,14 @@ instance Monad m => ProgramSearch (v -> p -> m (Maybe b)) where
 
 llvmProgram = (simpleProgram "llvm-config") {
   programFindLocation = programSearch (programFindLocation . simpleProgram),
-  programFindVersion = 
+  programFindVersion =
     let
       stripSuffix suf str = let r = reverse in liftM r (stripPrefix (r suf) (r str))
       svnToTag v = maybe v (++"-svn") (stripSuffix "svn" v)
       trim = dropWhile isSpace . reverse . dropWhile isSpace . reverse
+      rev v = filter (/= 'r') v
     in
-      \v p -> findProgramVersion "--version" (svnToTag . trim) v p
+      \v p -> findProgramVersion "--version" (svnToTag . trim . rev) v p
  }
 
 main = do
@@ -96,7 +97,11 @@ main = do
                         "3.2" -> "LLVM-3.2svn"
                         x -> "LLVM-" ++ x
       staticLibs <- liftM (map (fromJust . stripPrefix "-l") . words) $ llvmConfig ["--libs"]
+#if ! ( defined(mingw32_HOST_OS) || defined(__MINGW32__) )
       externLibs <- liftM ((++ ["tinfo"]) . mapMaybe (stripPrefix "-l") . words) $ llvmConfig ["--ldflags"]
+#else
+      let externLibs = []
+#endif
 
       let genericPackageDescription' = genericPackageDescription {
             condLibrary = do
