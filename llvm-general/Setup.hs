@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, CPP #-}
 import Control.Exception (SomeException, try)
 import Control.Monad
 import Data.Maybe
@@ -97,7 +97,11 @@ main = do
                         "3.2" -> "LLVM-3.2svn"
                         x -> "LLVM-" ++ x
       staticLibs <- liftM (map (fromJust . stripPrefix "-l") . words) $ llvmConfig ["--libs"]
+#if ! ( defined(mingw32_HOST_OS) || defined(__MINGW32__) )
       externLibs <- liftM ((++ ["tinfo"]) . mapMaybe (stripPrefix "-l") . words) $ llvmConfig ["--ldflags"]
+#else
+      let externLibs = []
+#endif
 
       let genericPackageDescription' = genericPackageDescription {
             condLibrary = do
