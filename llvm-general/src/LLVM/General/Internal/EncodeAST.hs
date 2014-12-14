@@ -31,7 +31,7 @@ data LocalValue
   = ForwardValue (Ptr FFI.Value)
   | DefinedValue (Ptr FFI.Value)
 
-data EncodeState = EncodeState { 
+data EncodeState = EncodeState {
       encodeStateBuilder :: Ptr FFI.Builder,
       encodeStateContext :: Context,
       encodeStateLocals :: Map A.Name LocalValue,
@@ -63,9 +63,9 @@ defineType :: A.Name -> Ptr FFI.Type -> EncodeAST ()
 defineType n t = modify $ \s -> s { encodeStateNamedTypes = Map.insert n t (encodeStateNamedTypes s) }
 
 runEncodeAST :: Context -> EncodeAST a -> ExceptT String IO a
-runEncodeAST context@(Context ctx) (EncodeAST a) = getExceptT $ makeExceptableT $
+runEncodeAST context@(Context ctx) (EncodeAST a) = unExceptableT $ makeExceptableT $
     bracket (FFI.createBuilderInContext ctx) FFI.disposeBuilder $ \builder -> do
-      let initEncodeState = EncodeState { 
+      let initEncodeState = EncodeState {
               encodeStateBuilder = builder,
               encodeStateContext = context,
               encodeStateLocals = Map.empty,
@@ -87,7 +87,7 @@ instance MonadAnyCont IO m => EncodeM m A.Name CString where
 
 phase :: EncodeAST a -> EncodeAST (EncodeAST a)
 phase p = do
-  let s0 `withLocalsFrom` s1 = s0 { 
+  let s0 `withLocalsFrom` s1 = s0 {
          encodeStateLocals = encodeStateLocals s1,
          encodeStateBlocks = encodeStateBlocks s1
         }
