@@ -88,7 +88,7 @@ linkModules ::
   -> Module -- ^ The module into which to link
   -> Module -- ^ The module to link into the other (and cannibalize or not)
   -> ExceptT String IO ()
-linkModules preserveRight (Module m) (Module m') = getExceptT $ flip runAnyContT return $ do
+linkModules preserveRight (Module m) (Module m') = unExceptableT $ flip runAnyContT return $ do
   preserveRight <- encodeM preserveRight
   msgPtr <- alloca
   result <- decodeM =<< (liftIO $ FFI.linkModules m m' preserveRight msgPtr)
@@ -112,7 +112,7 @@ instance LLVMAssemblyInput File where
 -- | parse 'Module' from LLVM assembly
 withModuleFromLLVMAssembly :: LLVMAssemblyInput s
                               => Context -> s -> (Module -> IO a) -> ExceptT (Either String Diagnostic) IO a
-withModuleFromLLVMAssembly (Context c) s f = getExceptT $ flip runAnyContT return $ do
+withModuleFromLLVMAssembly (Context c) s f = unExceptableT $ flip runAnyContT return $ do
   mb <- llvmAssemblyMemoryBuffer s
   smDiag <- anyContToM withSMDiagnostic
   m <- anyContToM $ bracket (FFI.parseLLVMAssembly c mb smDiag) FFI.disposeModule
@@ -133,7 +133,7 @@ moduleLLVMAssembly (Module m) = do
 
 -- | write LLVM assembly for a 'Module' to a file
 writeLLVMAssemblyToFile :: File -> Module -> ExceptT String IO ()
-writeLLVMAssemblyToFile (File path) (Module m) = getExceptT $ flip runAnyContT return $ do
+writeLLVMAssemblyToFile (File path) (Module m) = unExceptableT $ flip runAnyContT return $ do
   withFileRawOStream path False False $ liftIO . FFI.writeLLVMAssembly m
 
 class BitcodeInput b where
@@ -148,7 +148,7 @@ instance BitcodeInput File where
 
 -- | parse 'Module' from LLVM bitcode
 withModuleFromBitcode :: BitcodeInput b => Context -> b -> (Module -> IO a) -> ExceptT String IO a
-withModuleFromBitcode (Context c) b f = getExceptT $ flip runAnyContT return $ do
+withModuleFromBitcode (Context c) b f = unExceptableT $ flip runAnyContT return $ do
   mb <- bitcodeMemoryBuffer b
   msgPtr <- alloca
   m <- anyContToM $ bracket (FFI.parseBitcode c mb msgPtr) FFI.disposeModule
@@ -163,21 +163,21 @@ moduleBitcode (Module m) = do
 
 -- | write LLVM bitcode from a 'Module' into a file
 writeBitcodeToFile :: File -> Module -> ExceptT String IO ()
-writeBitcodeToFile (File path) (Module m) = getExceptT $ flip runAnyContT return $ do
+writeBitcodeToFile (File path) (Module m) = unExceptableT $ flip runAnyContT return $ do
   withFileRawOStream path False True $ liftIO . FFI.writeBitcode m
 
 targetMachineEmit :: FFI.CodeGenFileType -> TargetMachine -> Module -> Ptr FFI.RawOStream -> ExceptT String IO ()
-targetMachineEmit fileType (TargetMachine tm) (Module m) os = getExceptT $ flip runAnyContT return $ do
+targetMachineEmit fileType (TargetMachine tm) (Module m) os = unExceptableT $ flip runAnyContT return $ do
   msgPtr <- alloca
   r <- decodeM =<< (liftIO $ FFI.targetMachineEmit tm m fileType msgPtr os)
   when r $ throwError =<< decodeM msgPtr
 
 emitToFile :: FFI.CodeGenFileType -> TargetMachine -> File -> Module -> ExceptT String IO ()
-emitToFile fileType tm (File path) m = getExceptT$ flip runAnyContT return $ do
+emitToFile fileType tm (File path) m = unExceptableT$ flip runAnyContT return $ do
   withFileRawOStream path False True $ targetMachineEmit fileType tm m
 
 emitToByteString :: FFI.CodeGenFileType -> TargetMachine -> Module -> ExceptT String IO BS.ByteString
-emitToByteString fileType tm m = getExceptT $ flip runAnyContT return $ do
+emitToByteString fileType tm m = unExceptableT $ flip runAnyContT return $ do
   withBufferRawOStream $ targetMachineEmit fileType tm m
 
 -- | write target-specific assembly directly into a file

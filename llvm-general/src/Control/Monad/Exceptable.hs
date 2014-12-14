@@ -16,7 +16,7 @@ module Control.Monad.Exceptable(
     makeExceptableT,
     -- * The ExceptT monad transformer
     ExceptableT(ExceptableT),
-    getExceptT,
+    unExceptableT,
     runExceptableT,
     mapExceptableT,
     withExceptableT,
@@ -111,7 +111,7 @@ withExceptable = withExceptableT
 
 
 
-newtype ExceptableT e m a = ExceptableT { getExceptT :: Except.ExceptT  e m a }
+newtype ExceptableT e m a = ExceptableT { unExceptableT :: Except.ExceptT  e m a }
   deriving (
     Eq,
     Eq1,
@@ -152,7 +152,7 @@ instance (Read e, Read1 m) => Read1 (ExceptableT e m) where readsPrec1 = readsPr
 instance (Show e, Show1 m) => Show1 (ExceptableT e m) where showsPrec1 = showsPrec
 
 runExceptableT :: ExceptableT e m a -> m (Either e a)
-runExceptableT =  Except.runExceptT . getExceptT
+runExceptableT =  Except.runExceptT . unExceptableT
 
 makeExceptableT :: m (Either e a) -> ExceptableT e m a
 makeExceptableT = ExceptableT . Except.ExceptT

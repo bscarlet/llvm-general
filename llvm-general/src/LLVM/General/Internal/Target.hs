@@ -88,7 +88,7 @@ lookupTarget ::
   Maybe String -- ^ arch
   -> String -- ^ \"triple\" - e.g. x86_64-unknown-linux-gnu
   -> ExceptT String IO (Target, String)
-lookupTarget arch triple = getExceptT $ flip runAnyContT return $ do
+lookupTarget arch triple = unExceptableT $ flip runAnyContT return $ do
   cErrorP <- alloca
   cNewTripleP <- alloca
   arch <- encodeM (maybe "" id arch)
