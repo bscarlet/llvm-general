@@ -88,7 +88,7 @@ linkModules ::
   -> Module -- ^ The module into which to link
   -> Module -- ^ The module to link into the other (and cannibalize or not)
   -> ExceptT String IO ()
-linkModules preserveRight (Module m) (Module m') =getExceptT $ flip runAnyContT return $ do
+linkModules preserveRight (Module m) (Module m') = getExceptT $ flip runAnyContT return $ do
   preserveRight <- encodeM preserveRight
   msgPtr <- alloca
   result <- decodeM =<< (liftIO $ FFI.linkModules m m' preserveRight msgPtr)
@@ -148,7 +148,7 @@ instance BitcodeInput File where
 
 -- | parse 'Module' from LLVM bitcode
 withModuleFromBitcode :: BitcodeInput b => Context -> b -> (Module -> IO a) -> ExceptT String IO a
-withModuleFromBitcode (Context c) b f =getExceptT $ flip runAnyContT return $ do
+withModuleFromBitcode (Context c) b f = getExceptT $ flip runAnyContT return $ do
   mb <- bitcodeMemoryBuffer b
   msgPtr <- alloca
   m <- anyContToM $ bracket (FFI.parseBitcode c mb msgPtr) FFI.disposeModule
@@ -167,7 +167,7 @@ writeBitcodeToFile (File path) (Module m) = getExceptT $ flip runAnyContT return
   withFileRawOStream path False True $ liftIO . FFI.writeBitcode m
 
 targetMachineEmit :: FFI.CodeGenFileType -> TargetMachine -> Module -> Ptr FFI.RawOStream -> ExceptT String IO ()
-targetMachineEmit fileType (TargetMachine tm) (Module m) os =getExceptT $ flip runAnyContT return $ do
+targetMachineEmit fileType (TargetMachine tm) (Module m) os = getExceptT $ flip runAnyContT return $ do
   msgPtr <- alloca
   r <- decodeM =<< (liftIO $ FFI.targetMachineEmit tm m fileType msgPtr os)
   when r $ throwError =<< decodeM msgPtr
@@ -259,8 +259,8 @@ withModuleFromAST context@(Context c) (A.Module moduleId dataLayout triple defin
      eg' :: EncodeAST (Ptr FFI.GlobalValue) <- case g of
        g@(A.GlobalVariable { A.G.name = n }) -> do
          typ <- encodeM (A.G.type' g)
-         g' <- liftIO $ withName n $ \gName -> 
-                   FFI.addGlobalInAddressSpace m typ gName 
+         g' <- liftIO $ withName n $ \gName ->
+                   FFI.addGlobalInAddressSpace m typ gName
                           (fromIntegral ((\(A.AddrSpace a) -> a) $ A.G.addrSpace g))
          defineGlobal n g'
          liftIO $ do
@@ -329,7 +329,7 @@ withModuleFromAST context@(Context c) (A.Module moduleId dataLayout triple defin
        setVisibility g' (A.G.visibility g)
        return $ return ()
 
-  liftIO $ f (Module m)     
+  liftIO $ f (Module m)
 
 -- | Get an LLVM.General.AST.'LLVM.General.AST.Module' from a LLVM.General.'Module' - i.e.
 -- raise C++ objects into an Haskell AST.
@@ -337,7 +337,7 @@ moduleAST :: Module -> IO A.Module
 moduleAST (Module mod) = runDecodeAST $ do
   c <- return Context `ap` liftIO (FFI.getModuleContext mod)
   getMetadataKindNames c
-  return A.Module 
+  return A.Module
    `ap` (liftIO $ decodeM =<< FFI.getModuleIdentifier mod)
    `ap` (liftIO $ getDataLayout mod)
    `ap` (liftIO $ do
@@ -418,7 +418,7 @@ moduleAST (Module mod) = runDecodeAST $ do
               return A.NamedMetadataDefinition
                  `ap` (decodeM $ FFI.getNamedMetadataName nm)
                  `ap` liftM (map (\(A.MetadataNodeReference mid) -> mid)) (decodeM (n, os))
-         
+
        mds <- getMetadataDefinitions
 
        return $ tds ++ ias ++ gs ++ nmds ++ mds
