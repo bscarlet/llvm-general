@@ -93,18 +93,19 @@ withExceptable = withExceptableT
 
 
 newtype ExceptableT e m a = ExceptableT { getExceptT :: Except.ExceptT  e m a }
-  deriving (Eq
-    ,Eq1
-    ,Ord
-    ,Ord1
-    ,Functor
-    ,Foldable
-    ,Applicative
-    ,Alternative
-    ,Monad
-    ,MonadPlus
-    ,MonadTrans
-    ,MonadIO
+  deriving (
+    Eq,
+    Eq1,
+    Ord,
+    Ord1,
+    Functor,
+    Foldable,
+    Applicative,
+    Alternative,
+    Monad,
+    MonadPlus,
+    MonadTrans,
+    MonadIO
     )
 
 instance MonadState s m => MonadState s (ExceptableT e m) where
