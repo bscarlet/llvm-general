@@ -134,7 +134,7 @@ instance (Show e, Show1 m) => Show1 (ExceptableT e m) where showsPrec1 = showsPr
 runExceptableT :: ExceptableT e m a -> m (Either e a)
 runExceptableT =  Ext.runExceptT . getExceptT
 
-makeExceptableT :: m (Either e a)-> ExceptableT e m a
+makeExceptableT :: m (Either e a) -> ExceptableT e m a
 makeExceptableT = ExceptableT . Ext.ExceptT
 
 
