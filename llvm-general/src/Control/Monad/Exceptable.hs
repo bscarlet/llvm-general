@@ -28,8 +28,8 @@ module Control.Monad.Exceptable(
     liftListen,
     liftPass,
     -- * underlying ExceptT type
-    Ext.Except,
-    Ext.ExceptT,
+    Except.Except,
+    Except.ExceptT,
 
     module Control.Monad,
     module Control.Monad.Fix,
@@ -41,7 +41,7 @@ module Control.Monad.Exceptable(
     -- $ExceptTExample
     ) where
 
-import qualified Control.Monad.Trans.Except as Ext
+import qualified Control.Monad.Trans.Except as Except
 
 import  Control.Monad.Trans
 --import Control.Monad.IO.Class (MonadIO(..))
@@ -69,13 +69,13 @@ type Exceptable e = ExceptableT e Identity
 except :: Either e a -> Exceptable e a
 except m = makeExceptableT (Identity m)
 
-exceptable :: Ext.Except e a -> Exceptable e a
+exceptable :: Except.Except e a -> Exceptable e a
 exceptable = ExceptableT
 
 -- | Extractor for computations in the exception monad.
 -- (The inverse of 'except').
 runExceptable :: Exceptable e a -> Either e a
-runExceptable (ExceptableT m) = runIdentity $ Ext.runExceptT m
+runExceptable (ExceptableT m) = runIdentity $ Except.runExceptT m
 
 -- | Map the unwrapped computation using the given function.
 --
@@ -92,7 +92,7 @@ withExceptable = withExceptableT
 
 
 
-newtype ExceptableT e m a = ExceptableT { getExceptT :: Ext.ExceptT  e m a }
+newtype ExceptableT e m a = ExceptableT { getExceptT :: Except.ExceptT  e m a }
   deriving (Eq
     ,Eq1
     ,Ord
@@ -118,7 +118,7 @@ instance Monad m => MonadError e (ExceptableT e m) where
 
 instance (Traversable f) => Traversable (ExceptableT e f) where
     traverse f a =
-        (ExceptableT . Ext.ExceptT) <$>
+        (ExceptableT . Except.ExceptT) <$>
           traverse (either (pure . Left) (fmap Right . f)) (runExceptableT a)
 
 
@@ -132,10 +132,10 @@ instance (Read e, Read1 m) => Read1 (ExceptableT e m) where readsPrec1 = readsPr
 instance (Show e, Show1 m) => Show1 (ExceptableT e m) where showsPrec1 = showsPrec
 
 runExceptableT :: ExceptableT e m a -> m (Either e a)
-runExceptableT =  Ext.runExceptT . getExceptT
+runExceptableT =  Except.runExceptT . getExceptT
 
 makeExceptableT :: m (Either e a) -> ExceptableT e m a
-makeExceptableT = ExceptableT . Ext.ExceptT
+makeExceptableT = ExceptableT . Except.ExceptT
 
 
 
