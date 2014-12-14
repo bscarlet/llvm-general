@@ -61,6 +61,25 @@ import Data.Foldable
 import Data.Traversable (Traversable(traverse))
 
 
+{- |
+Why does the Exceptable module exist? The present llvm general design
+is around the use of the ExceptT transformer, first defined in  transformers 0.4.
+
+Well, the goal of this module is to allow LLVM-General to be compatible with
+GHC 7.8 apis, and GHC 7.8 comes bundled with transformers 0.3. Thus LLVM-General
+must be compatible with transformers 0.3 (via the use of transformers-compat)
+in order to be usable in conjunction with usage of GHC as a library.
+
+At some future point where the active "power users" base of LLVM-General
+no longer needs to support GHC 7.8 heavily, removing this Module and reverting other
+changes elsewhere to using ExceptT / Except will be a good idea.
+
+A good "signpost" for reverting will be around GHC 7.12's release,
+because then there will be >=2 GHC major version releases that come bundled with
+Transformers >= 0.4
+
+-}
+
 
 type Exceptable e = ExceptableT e Identity
 
