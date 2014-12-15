@@ -29,7 +29,7 @@ extra-source-files:
   src/LLVM/General/Internal/FFI/Target.h
   src/LLVM/General/Internal/FFI/Type.h
   src/LLVM/General/Internal/FFI/Value.h
-   
+
 source-repository head
   type: git
   location: git://github.com/bscarlet/llvm-general.git
@@ -51,12 +51,13 @@ flag debug
 library
   build-tools: llvm-config
   ghc-options: -fwarn-unused-imports
-  build-depends: 
+  build-depends:
     base >= 4.5.0.0 && < 5,
     utf8-string >= 0.3.7,
     bytestring >= 0.9.1.10,
-    transformers >= 0.4.0.0,
-    mtl >= 2.2.1,
+    transformers >= 0.3.0.0,
+    transformers-compat,
+    mtl >= 2.1.3,
     template-haskell >= 2.5.0.0,
     containers >= 0.4.2.1,
     parsec >= 3.1.3,
@@ -93,6 +94,7 @@ library
 
   other-modules:
     Control.Monad.AnyCont
+    Control.Monad.Exceptable
     Control.Monad.AnyCont.Class
     Control.Monad.Trans.AnyCont
     LLVM.General.Internal.Analysis
@@ -168,7 +170,7 @@ library
     LLVM.General.Internal.FFI.Value
 
   include-dirs: src
-  c-sources: 
+  c-sources:
     src/LLVM/General/Internal/FFI/AssemblyC.cpp
     src/LLVM/General/Internal/FFI/BitcodeC.cpp
     src/LLVM/General/Internal/FFI/BuilderC.cpp
@@ -194,7 +196,7 @@ library
 
 test-suite test
   type: exitcode-stdio-1.0
-  build-depends:  
+  build-depends:
     base >= 3 && < 5,
     test-framework >= 0.5,
     test-framework-hunit >= 0.2.7,
@@ -204,7 +206,8 @@ test-suite test
     llvm-general == 3.3.13.1,
     llvm-general-pure == 3.3.13.0,
     containers >= 0.4.2.1,
-    mtl >= 2.2.1
+    mtl >= 2.1,
+    transformers-compat
   hs-source-dirs: test
   extensions:
     TupleSections

@@ -7,7 +7,7 @@
 module LLVM.General.Internal.Target where
 
 import Control.Monad hiding (forM)
-import Control.Monad.Except hiding (forM)
+import Control.Monad.Exceptable hiding (forM)
 import Control.Exception
 import Data.Functor
 import Data.Traversable (forM)
@@ -84,11 +84,11 @@ instance (Monad d, DecodeM d String es) => DecodeM d (Set CPUFeature) es where
 -- | Find a 'Target' given an architecture and/or a \"triple\".
 -- | <http://llvm.org/doxygen/structllvm_1_1TargetRegistry.html#a3105b45e546c9cc3cf78d0f2ec18ad89>
 -- | Be sure to run either 'initializeAllTargets' or 'initializeNativeTarget' before expecting this to succeed, depending on what target(s) you want to use.
-lookupTarget :: 
+lookupTarget ::
   Maybe String -- ^ arch
   -> String -- ^ \"triple\" - e.g. x86_64-unknown-linux-gnu
   -> ExceptT String IO (Target, String)
-lookupTarget arch triple = flip runAnyContT return $ do
+lookupTarget arch triple = unExceptableT $ flip runAnyContT return $ do
   cErrorP <- alloca
   cNewTripleP <- alloca
   arch <- encodeM (maybe "" id arch)
@@ -140,7 +140,7 @@ pokeTargetOptions hOpts (TargetOptions cOpts) = do
 -- | get all target options
 peekTargetOptions :: TargetOptions -> IO TO.Options
 peekTargetOptions (TargetOptions tOpts) = do
-  let gof = decodeM <=< FFI.getTargetOptionsFlag tOpts 
+  let gof = decodeM <=< FFI.getTargetOptionsFlag tOpts
   printMachineCode
     <- gof FFI.targetOptionFlagPrintMachineCode
   noFramePointerElimination
@@ -192,7 +192,7 @@ peekTargetOptions (TargetOptions tOpts) = do
 newtype TargetMachine = TargetMachine (Ptr FFI.TargetMachine)
 
 -- | bracket creation and destruction of a 'TargetMachine'
-withTargetMachine :: 
+withTargetMachine ::
     Target
     -> String -- ^ triple
     -> String -- ^ cpu
@@ -262,7 +262,7 @@ getHostCPUName = decodeM =<< FFI.getHostCPUName
 -- | a space-separated list of LLVM feature names supported by the host CPU
 getHostCPUFeatures :: IO (Set CPUFeature)
 getHostCPUFeatures = decodeM =<< FFI.getHostCPUFeatures
-  
+
 -- | 'DataLayout' to use for the given 'TargetMachine'
 getTargetMachineDataLayout :: TargetMachine -> IO DataLayout
 getTargetMachineDataLayout (TargetMachine m) = do
@@ -313,7 +313,7 @@ setLibraryFunctionAvailableWithName (TargetLibraryInfo f) libraryFunction name =
   liftIO $ FFI.libFuncSetAvailableWithName f libraryFunction name
 
 -- | look up information about the library functions available on a given platform
-withTargetLibraryInfo :: 
+withTargetLibraryInfo ::
   String -- ^ triple
   -> (TargetLibraryInfo -> IO a)
   -> IO a
