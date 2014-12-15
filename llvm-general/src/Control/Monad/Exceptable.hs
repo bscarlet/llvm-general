@@ -1,8 +1,9 @@
-{-#LANGUAGE
-  GeneralizedNewtypeDeriving
-  ,MultiParamTypeClasses
-  ,UndecidableInstances
+{-# LANGUAGE
+  GeneralizedNewtypeDeriving,
+  MultiParamTypeClasses,
+  UndecidableInstances
   #-}
+
 module Control.Monad.Exceptable(
       -- * MonadError class
     MonadError(..),
