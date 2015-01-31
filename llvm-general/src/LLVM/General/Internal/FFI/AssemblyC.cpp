@@ -18,7 +18,7 @@ LLVMModuleRef LLVM_General_ParseLLVMAssembly(
 	LLVMMemoryBufferRef memoryBuffer,
 	SMDiagnostic *error
 ) {
-	return wrap(ParseAssembly(unwrap(memoryBuffer), NULL, *error, *unwrap(context)));
+	return wrap(parseAssembly(unwrap(memoryBuffer)->getMemBufferRef(), *error, *unwrap(context)).release());
 }
 
 void LLVM_General_WriteLLVMAssembly(LLVMModuleRef module, raw_ostream &os) {

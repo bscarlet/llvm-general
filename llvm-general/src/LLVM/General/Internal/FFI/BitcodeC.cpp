@@ -16,7 +16,7 @@ LLVMModuleRef LLVM_General_ParseBitcode(
 	char **error
 ) {
 	std::string msg;
-	ErrorOr<Module *> m = parseBitcodeFile(unwrap(mb), *unwrap(c));
+	ErrorOr<Module *> m = parseBitcodeFile(unwrap(mb)->getMemBufferRef(), *unwrap(c));
 	if (std::error_code ec = m.getError()) {
 		*error = strdup(ec.message().c_str());
 		return 0;

@@ -10,7 +10,6 @@ import Control.Monad hiding (forM)
 import Control.Monad.Trans.Except (runExcept)
 import Control.Monad.Exceptable hiding (forM)
 import Control.Exception
-import Data.Functor
 import Data.Traversable (forM)
 import Control.Monad.AnyCont
 
@@ -227,13 +226,6 @@ withTargetMachine
       )
       FFI.disposeTargetMachine
       . (. TargetMachine)
-
--- | <http://llvm.org/doxygen/classllvm_1_1TargetLowering.html>
-newtype TargetLowering = TargetLowering (Ptr FFI.TargetLowering)
-
--- | get the 'TargetLowering' of a 'TargetMachine'
-getTargetLowering :: TargetMachine -> IO TargetLowering
-getTargetLowering (TargetMachine tm) = TargetLowering <$> FFI.getTargetLowering tm
 
 -- | Initialize the native target. This function is called automatically in these Haskell bindings
 -- when creating an 'LLVM.General.ExecutionEngine.ExecutionEngine' which will require it, and so it should

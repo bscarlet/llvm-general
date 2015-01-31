@@ -5,6 +5,7 @@
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetLibraryInfo.h"
+#include "llvm/Target/TargetSubtargetInfo.h"
 #include "llvm/PassManager.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/ExecutionEngine/Interpreter.h"
@@ -242,10 +243,6 @@ LLVMTargetMachineRef LLVM_General_CreateTargetMachine(
 	);
 }
 	
-const TargetLowering *LLVM_General_GetTargetLowering(LLVMTargetMachineRef t) {
-	return unwrap(t)->getTargetLowering();
-}
-
 char *LLVM_General_GetDefaultTargetTriple() {
 	return strdup(sys::getDefaultTargetTriple().c_str());
 }
@@ -274,7 +271,7 @@ char *LLVM_General_GetHostCPUFeatures() {
 }
 
 char *LLVM_General_GetTargetMachineDataLayout(LLVMTargetMachineRef t) {
-	return strdup(unwrap(t)->getDataLayout()->getStringRepresentation().c_str());
+	return strdup(unwrap(t)->getSubtargetImpl()->getDataLayout()->getStringRepresentation().c_str());
 }
 
 LLVMTargetLibraryInfoRef LLVM_General_CreateTargetLibraryInfo(
@@ -333,7 +330,7 @@ LLVMBool LLVM_General_TargetMachineEmit(
 ) {
 	formatted_raw_ostream destf(dest);
 	TargetMachine &tm = *unwrap(TM);
-	const DataLayout *td = tm.getDataLayout();
+	const DataLayout *td = tm.getSubtargetImpl()->getDataLayout();
 	if (!td) {
 		*ErrorMessage = strdup("No DataLayout in TargetMachine");
 		return true;

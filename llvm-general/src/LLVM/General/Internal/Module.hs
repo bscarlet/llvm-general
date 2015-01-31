@@ -97,7 +97,7 @@ linkModules preserveRight (Module m) (Module m') = unExceptableT $ flip runAnyCo
 
 class LLVMAssemblyInput s where
   llvmAssemblyMemoryBuffer :: (Inject String e, MonadError e m, MonadIO m, MonadAnyCont IO m)
-                              => s -> m (FFI.OwnerTransfered (Ptr FFI.MemoryBuffer))
+                              => s -> m (Ptr FFI.MemoryBuffer)
 
 instance LLVMAssemblyInput (String, String) where
   llvmAssemblyMemoryBuffer (id, s) = do

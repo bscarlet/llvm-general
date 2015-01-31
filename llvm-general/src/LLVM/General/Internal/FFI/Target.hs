@@ -81,11 +81,6 @@ foreign import ccall unsafe "LLVM_General_TargetMachineEmit" targetMachineEmit :
   -> Ptr RawOStream
   -> IO LLVMBool
 
-data TargetLowering
-
-foreign import ccall unsafe "LLVM_General_GetTargetLowering" getTargetLowering ::
-  Ptr TargetMachine -> IO (Ptr TargetLowering)
-
 foreign import ccall unsafe "LLVM_General_GetDefaultTargetTriple" getDefaultTargetTriple :: 
   IO (OwnerTransfered CString)
 
