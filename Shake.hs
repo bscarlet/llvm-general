@@ -208,7 +208,7 @@ main = shake shakeOptions {
           command_ [Cwd ghPages] "git" [ "push" ]
 
   llvmDir </> "install/bin/llvm-config" *> \out -> do
-    Stdout tarball <- command [] "ls" [ "downloads/llvm-" ++ llvmVersion ++ ".src.tar.*" ]
+    [tarball] <- getDirectoryFiles "." [ "downloads/llvm-" ++ llvmVersion ++ ".src.tar.*" ]
     buildRoot <- askOracle (BuildRoot ())
     need [ tarball ]
     let buildDir = llvmDir </> "build"
