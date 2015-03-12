@@ -9,7 +9,6 @@ import LLVM.General.Test.Support
 import Control.Monad.Trans.Except
 import Data.Bits
 import Data.Word
-import Data.Functor
 
 import qualified Data.Set as Set
 
@@ -329,6 +328,25 @@ tests = testGroup "Module" [
       strCheck ast s
       s' <- withContext $ \context -> withModuleFromAST' context ast $ runExceptT . verify
       s' @?= Right (),
+
+    testCase "metadata type" $ withContext $ \context -> do
+      let s = "; ModuleID = '<string>'\n\
+              \\n\
+              \define void @bar(metadata) {\n\
+              \  ret void\n\
+              \}\n"
+          ast = Module "<string>" Nothing Nothing [
+             GlobalDefinition $ functionDefaults {
+               G.returnType = void,
+               G.name = Name "bar",
+               G.parameters = ([Parameter MetadataType (UnName 0) []], False),
+               G.basicBlocks = [
+                 BasicBlock (UnName 1) [] (Do $ Ret Nothing [])
+                ]
+             }
+           ]
+      strCheck ast s,
+
     testCase "set flag on constant expr" $ withContext $ \context -> do
       let ast = Module "<string>" Nothing Nothing [
              GlobalDefinition $ functionDefaults {
