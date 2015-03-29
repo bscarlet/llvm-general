@@ -106,7 +106,8 @@ basePrefixScheme = PrefixScheme $ Map.fromList [
   ("Data.Maybe", Nothing),
   ("Data.Either", Nothing),
   ("Data.Map", Just "Map"),
-  ("Data.Set", Just "Set")
+  ("Data.Set", Just "Set"),
+  ("GHC.Base", Nothing)
  ]
 
 -- | a terse 'PrefixScheme' for types in the AST, leaving most names unqualified.
@@ -155,7 +156,9 @@ defaultPrefixScheme = longPrefixScheme
 -- | print Haskell imports to define the correct prefixes for use with the output
 -- of a given 'PrefixScheme'.
 imports :: PrefixScheme -> String
-imports (PrefixScheme p) = unlines . flip map (Map.toList p) $ \(mod, mAbbr) ->
+imports (PrefixScheme p) = unlines [
   "import " ++ maybe mod (\abbr -> "qualified " ++ mod ++ " as " ++ abbr) mAbbr
+  | (mod, mAbbr) <- Map.toList p, mod /= "GHC.Base"
+ ]
 
 
