@@ -6,9 +6,3 @@ install:
   - cabal install --only-dependencies --enable-tests --force-reinstall llvm-general-pure/ llvm-general/
 script:
   - cabal install --enable-tests llvm-general-pure/ llvm-general/
-branches:
-  only:
-    - llvm-3.5
-    - llvm-3.4
-    - llvm-3.3
-
