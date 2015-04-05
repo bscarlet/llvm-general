@@ -1,6 +1,8 @@
 -- | Code used with Template Haskell to build the FFI for transform passes.
 module LLVM.General.Internal.FFI.Transforms where
 
+import LLVM.General.Prelude
+
 -- | does the constructor for this pass require a TargetLowering object
 needsTargetLowering "CodeGenPrepare" = True
 needsTargetLowering "LowerInvoke" = True
