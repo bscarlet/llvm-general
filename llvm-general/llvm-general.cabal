@@ -67,6 +67,7 @@ library
   extra-libraries: stdc++
   hs-source-dirs: src
   extensions:
+    NoImplicitPrelude
     TupleSections
     DeriveDataTypeable
     EmptyDataDecls

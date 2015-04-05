@@ -3,9 +3,7 @@ module LLVM.General.DataLayout (
  parseDataLayout
  ) where
 
-import Control.Applicative
-
-import Data.Word
+import LLVM.General.Prelude
 
 import qualified Data.List as List
 import qualified Data.Map as Map
