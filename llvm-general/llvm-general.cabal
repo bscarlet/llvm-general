@@ -16,6 +16,7 @@ description:
 	handles almost all of the stateful complexities of using the LLVM API to build IR; and it supports moving IR not
 	only from Haskell into LLVM C++ objects, but the other direction - from LLVM C++ into Haskell.
 extra-source-files:
+  changelog
   src/LLVM/General/Internal/FFI/Analysis.h
   src/LLVM/General/Internal/FFI/BinaryOperator.h
   src/LLVM/General/Internal/FFI/Constant.h
@@ -47,9 +48,6 @@ flag shared-llvm
 flag debug
   description: compile C(++) shims with debug info for ease of troubleshooting
   default: False
-
-extra-source-files:
-  changelog	
 
 library
   build-tools: llvm-config
