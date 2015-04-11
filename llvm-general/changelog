@@ -1,0 +1,5 @@
+-*-change-log-*-
+
+3.4.5.3 Benjamin S. Scarlet <fgthb0@greynode.net> 2015-04-11
+	* Clean up warnings with ghc-7.10
+	* Start changelog
