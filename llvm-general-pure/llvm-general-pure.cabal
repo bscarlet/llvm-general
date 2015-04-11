@@ -1,5 +1,5 @@
 name: llvm-general-pure
-version: 3.3.14.2
+version: 3.3.14.3
 license: BSD3
 license-file: LICENSE
 author: Benjamin S.Scarlet <fgthb0@greynode.net>
@@ -23,7 +23,10 @@ source-repository this
   type: git
   location: git://github.com/bscarlet/llvm-general.git
   branch: llvm-3.3
-  tag: pure-v3.3.14.2
+  tag: pure-v3.3.14.3
+
+extra-source-files:
+  changelog	
 
 library
   ghc-options: -fwarn-unused-imports
@@ -69,7 +72,6 @@ library
     LLVM.General.PrettyPrint
     LLVM.General.Prelude
     LLVM.General.TH
-
   other-modules:
     LLVM.General.Internal.PrettyPrint
 
@@ -82,7 +84,7 @@ test-suite test
     HUnit >= 1.2.4.2,
     test-framework-quickcheck2 >= 0.3.0.1,
     QuickCheck >= 2.5.1.1,
-    llvm-general-pure == 3.3.14.2,
+    llvm-general-pure == 3.3.14.3,
     containers >= 0.4.2.1,
     mtl >= 2.1.3
   hs-source-dirs: test
