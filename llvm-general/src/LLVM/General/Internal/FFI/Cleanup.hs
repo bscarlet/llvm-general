@@ -3,13 +3,11 @@
   #-}
 module LLVM.General.Internal.FFI.Cleanup where
 
-import Language.Haskell.TH
-import Control.Monad
-import Data.Sequence as Seq
-import Data.Foldable (toList)
+import LLVM.General.Prelude
 
-import Data.Word
-import Data.Int
+import Language.Haskell.TH
+import Data.Sequence as Seq
+
 import Foreign.C
 import Foreign.Ptr
 

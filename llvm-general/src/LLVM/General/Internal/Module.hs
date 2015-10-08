@@ -7,12 +7,13 @@
 -- | This Haskell module is for/of functions for handling LLVM modules.
 module LLVM.General.Internal.Module where
 
+import LLVM.General.Prelude
+
 import Control.Monad.Trans
 import Control.Monad.Trans.Except (runExcept)
-import Control.Monad.State
+import Control.Monad.State (gets)
 import Control.Monad.Exceptable
 import Control.Monad.AnyCont
-import Control.Applicative
 import Control.Exception
 
 import Foreign.Ptr
@@ -38,7 +39,8 @@ import qualified LLVM.General.Internal.FFI.RawOStream as FFI
 import qualified LLVM.General.Internal.FFI.Target as FFI
 import qualified LLVM.General.Internal.FFI.Value as FFI
 
-import LLVM.General.Internal.BasicBlock
+import LLVM.General.Internal.Attribute
+import LLVM.General.Internal.BasicBlock  
 import LLVM.General.Internal.Coding
 import LLVM.General.Internal.Context
 import LLVM.General.Internal.DecodeAST
@@ -97,7 +99,7 @@ linkModules preserveRight (Module m) (Module m') = unExceptableT $ flip runAnyCo
 
 class LLVMAssemblyInput s where
   llvmAssemblyMemoryBuffer :: (Inject String e, MonadError e m, MonadIO m, MonadAnyCont IO m)
-                              => s -> m (Ptr FFI.MemoryBuffer)
+                              => s -> m (FFI.OwnerTransfered (Ptr FFI.MemoryBuffer))
 
 instance LLVMAssemblyInput (String, String) where
   llvmAssemblyMemoryBuffer (id, s) = do
@@ -234,8 +236,16 @@ withModuleFromAST context@(Context c) (A.Module moduleId dataLayout triple defin
      defineType n t'
      return $ do
        maybe (return ()) (setNamedType t') t
-       return . return . return $ return ()
+       return . return . return . return $ ()
 
+   A.COMDAT n csk -> do
+     n' <- encodeM n
+     csk <- encodeM csk
+     cd <- liftIO $ FFI.getOrInsertCOMDAT m n'
+     liftIO $ FFI.setCOMDATSelectionKind cd csk
+     defineCOMDAT n cd
+     return . return . return . return . return $ ()
+     
    A.MetadataNodeDefinition i os -> return . return $ do
      t <- liftIO $ FFI.createTemporaryMDNodeInContext c
      defineMDNode i t
@@ -256,7 +266,12 @@ withModuleFromAST context@(Context c) (A.Module moduleId dataLayout triple defin
    A.ModuleInlineAssembly s -> do
      s <- encodeM s
      liftIO $ FFI.moduleAppendInlineAsm m (FFI.ModuleAsm s)
-     return . return . return . return $ return ()
+     return . return . return . return . return $ ()
+
+   A.FunctionAttributes gid attrs -> do
+     attrs <- encodeM attrs
+     defineAttributeGroup gid attrs
+     return . return . return . return . return $ ()
 
    A.GlobalDefinition g -> return . phase $ do
      eg' :: EncodeAST (Ptr FFI.GlobalValue) <- case g of
@@ -266,9 +281,8 @@ withModuleFromAST context@(Context c) (A.Module moduleId dataLayout triple defin
                    FFI.addGlobalInAddressSpace m typ gName
                           (fromIntegral ((\(A.AddrSpace a) -> a) $ A.G.addrSpace g))
          defineGlobal n g'
+         setThreadLocalMode g' (A.G.threadLocalMode g)
          liftIO $ do
-           tl <- encodeM (A.G.isThreadLocal g)
-           FFI.setThreadLocal g' tl
            hua <- encodeM (A.G.hasUnnamedAddr g)
            FFI.setUnnamedAddr (FFI.upCast g') hua
            ic <- encodeM (A.G.isConstant g)
@@ -276,6 +290,7 @@ withModuleFromAST context@(Context c) (A.Module moduleId dataLayout triple defin
          return $ do
            maybe (return ()) ((liftIO . FFI.setInitializer g') <=< encodeM) (A.G.initializer g)
            setSection g' (A.G.section g)
+           setCOMDAT g' (A.G.comdat g)
            setAlignment g' (A.G.alignment g)
            return (FFI.upCast g')
        (a@A.G.GlobalAlias { A.G.name = n }) -> do
@@ -284,19 +299,23 @@ withModuleFromAST context@(Context c) (A.Module moduleId dataLayout triple defin
          as <- encodeM as
          a' <- liftIO $ withName n $ \name -> FFI.justAddAlias m typ as name
          defineGlobal n a'
+         liftIO $ do
+           hua <- encodeM (A.G.hasUnnamedAddr a)
+           FFI.setUnnamedAddr (FFI.upCast a') hua
          return $ do
+           setThreadLocalMode a' (A.G.threadLocalMode a)
            (liftIO . FFI.setAliasee a') =<< encodeM (A.G.aliasee a)
            return (FFI.upCast a')
-       (A.Function _ _ cc rAttrs resultType fName (args,isVarArgs) attrs _ _ gc blocks) -> do
-         typ <- encodeM $ A.FunctionType resultType (map (\(A.Parameter t _ _) -> t) args) isVarArgs
+       (A.Function _ _ _ cc rAttrs resultType fName (args, isVarArgs) attrs _ _ _ gc prefix blocks) -> do
+         typ <- encodeM $ A.FunctionType resultType [t | A.Parameter t _ _ <- args] isVarArgs
          f <- liftIO . withName fName $ \fName -> FFI.addFunction m fName typ
          defineGlobal fName f
          cc <- encodeM cc
-         liftIO $ FFI.setFunctionCallConv f cc
-         rAttrs <- encodeM rAttrs
-         liftIO $ FFI.addFunctionRetAttr f rAttrs
-         liftIO $ setFunctionAttrs f attrs
+         liftIO $ FFI.setFunctionCallingConvention f cc
+         setFunctionAttributes f (MixedAttributeSet attrs rAttrs (Map.fromList $ zip [0..] [pa | A.Parameter _ _ pa <- args]))
+         setPrefixData f prefix
          setSection f (A.G.section g)
+         setCOMDAT f (A.G.comdat g)
          setAlignment f (A.G.alignment g)
          setGC f gc
          forM blocks $ \(A.BasicBlock bName _ _) -> do
@@ -307,15 +326,10 @@ withModuleFromAST context@(Context c) (A.Module moduleId dataLayout triple defin
            ps <- allocaArray nParams
            liftIO $ FFI.getParams f ps
            params <- peekArray nParams ps
-           forM (zip args params) $ \(A.Parameter _ n attrs, p) -> do
+           forM (zip args params) $ \(A.Parameter _ n _, p) -> do
              defineLocal n p
              n <- encodeM n
              liftIO $ FFI.setValueName (FFI.upCast p) n
-             unless (null attrs) $
-                    do attrs <- encodeM attrs
-                       liftIO $ FFI.addAttribute p attrs
-                       return ()
-             return ()
            finishInstrs <- forM blocks $ \(A.BasicBlock bName namedInstrs term) -> do
              b <- encodeM bName
              (do
@@ -332,6 +346,7 @@ withModuleFromAST context@(Context c) (A.Module moduleId dataLayout triple defin
        g' <- eg'
        setLinkage g' (A.G.linkage g)
        setVisibility g' (A.G.visibility g)
+       setDLLStorageClass g' (A.G.dllStorageClass g)
        return $ return ()
 
   liftIO $ f (Module m)
@@ -360,7 +375,8 @@ moduleAST (Module mod) = runDecodeAST $ do
                `ap` return n
                `ap` getLinkage g
                `ap` getVisibility g
-               `ap` (liftIO $ decodeM =<< FFI.isThreadLocal g)
+               `ap` getDLLStorageClass g
+               `ap` getThreadLocalMode g
                `ap` return as
                `ap` (liftIO $ decodeM =<< FFI.hasUnnamedAddr (FFI.upCast g))
                `ap` (liftIO $ decodeM =<< FFI.isGlobalConstant g)
@@ -369,6 +385,7 @@ moduleAST (Module mod) = runDecodeAST $ do
                       i <- liftIO $ FFI.getInitializer g
                       if i == nullPtr then return Nothing else Just <$> decodeM i)
                `ap` getSection g
+               `ap` getCOMDATName g
                `ap` getAlignment g,
 
           do
@@ -379,6 +396,9 @@ moduleAST (Module mod) = runDecodeAST $ do
                `ap` return n
                `ap` getLinkage a
                `ap` getVisibility a
+               `ap` getDLLStorageClass a
+               `ap` getThreadLocalMode a
+               `ap` (liftIO $ decodeM =<< FFI.hasUnnamedAddr (FFI.upCast a))
                `ap` typeOf a
                `ap` (decodeM =<< (liftIO $ FFI.getAliasee a)),
 
@@ -387,7 +407,8 @@ moduleAST (Module mod) = runDecodeAST $ do
             liftM sequence . forM ffiFunctions $ \f -> localScope $ do
               A.PointerType (A.FunctionType returnType _ isVarArg) _ <- typeOf f
               n <- getGlobalName f
-              parameters <- getParameters f
+              MixedAttributeSet fAttrs rAttrs pAttrs <- getMixedAttributeSet f
+              parameters <- getParameters f pAttrs
               decodeBlocks <- do
                 ffiBasicBlocks <- liftIO $ FFI.getXs (FFI.getFirstBasicBlock f) FFI.getNextBasicBlock
                 liftM sequence . forM ffiBasicBlocks $ \b -> do
@@ -398,15 +419,18 @@ moduleAST (Module mod) = runDecodeAST $ do
               return $ return A.Function
                  `ap` getLinkage f
                  `ap` getVisibility f
-                 `ap` (liftIO $ decodeM =<< FFI.getFunctionCallConv f)
-                 `ap` (liftIO $ decodeM =<< FFI.getFunctionRetAttr f)
+                 `ap` getDLLStorageClass f
+                 `ap` (liftIO $ decodeM =<< FFI.getFunctionCallingConvention f)
+                 `ap` return rAttrs
                  `ap` return returnType
                  `ap` return n
                  `ap` return (parameters, isVarArg)
-                 `ap` (liftIO $ getFunctionAttrs f)
+                 `ap` return fAttrs
                  `ap` getSection f
+                 `ap` getCOMDATName f
                  `ap` getAlignment f
                  `ap` getGC f
+                 `ap` getPrefixData f
                  `ap` decodeBlocks
         ]
 
@@ -426,5 +450,11 @@ moduleAST (Module mod) = runDecodeAST $ do
 
        mds <- getMetadataDefinitions
 
-       return $ tds ++ ias ++ gs ++ nmds ++ mds
+       ags <- do
+         ags <- gets $ Map.toList . functionAttributeSetIDs
+         forM ags $ \(as, gid) -> return A.FunctionAttributes `ap` return gid `ap` decodeM as
+
+       cds <- gets $ map (uncurry A.COMDAT) . Map.elems . comdats
+
+       return $ tds ++ ias ++ gs ++ nmds ++ mds ++ ags ++ cds
    )

@@ -5,17 +5,20 @@
 -- Encapsulate hsc macro weirdness here, supporting higher-level tricks elsewhere.
 module LLVM.General.Internal.FFI.LLVMCTypes where
 
+import LLVM.General.Prelude
+
 #define __STDC_LIMIT_MACROS
 #include "llvm-c/Core.h"
 #include "llvm-c/Target.h"
 #include "llvm-c/TargetMachine.h"
 #include "llvm-c/Linker.h"
-#include "LLVM/General/Internal/FFI/Instruction.h"
+#include "LLVM/General/Internal/FFI/Attribute.h"
+#include "LLVM/General/Internal/FFI/Instruction.h" 
 #include "LLVM/General/Internal/FFI/Value.h"
 #include "LLVM/General/Internal/FFI/SMDiagnostic.h"
 #include "LLVM/General/Internal/FFI/InlineAssembly.h"
 #include "LLVM/General/Internal/FFI/Target.h"
-#include "LLVM/General/Internal/FFI/Function.h"
+#include "LLVM/General/Internal/FFI/CallingConvention.h"
 #include "LLVM/General/Internal/FFI/GlobalValue.h"
 #include "LLVM/General/Internal/FFI/Type.h"
 #include "LLVM/General/Internal/FFI/Constant.h"
@@ -25,7 +28,6 @@ module LLVM.General.Internal.FFI.LLVMCTypes where
 
 import Language.Haskell.TH.Quote
 
-import Data.Data
 import Data.Bits
 import Foreign.C
 import Foreign.Storable
@@ -121,6 +123,11 @@ newtype SynchronizationScope = SynchronizationScope CUInt
 #define SS_Rec(n) { #n, LLVM ## n ## SynchronizationScope },
 #{inject SYNCRONIZATION_SCOPE, SynchronizationScope, SynchronizationScope, synchronizationScope, SS_Rec}
 
+newtype TailCallKind = TailCallKind CUInt
+  deriving (Eq, Typeable, Data)
+#define TCK_Rec(n) { #n, LLVM_General_TailCallKind_ ## n },
+#{inject TAIL_CALL_KIND, TailCallKind, TailCallKind, tailCallKind, TCK_Rec}
+
 newtype Linkage = Linkage CUInt
   deriving (Eq, Read, Show, Typeable, Data)
 #define LK_Rec(n) { #n, LLVM ## n ## Linkage },
@@ -131,10 +138,25 @@ newtype Visibility = Visibility CUInt
 #define VIS_Rec(n) { #n, LLVM ## n ## Visibility },
 #{inject VISIBILITY, Visibility, Visibility, visibility, VIS_Rec}
 
-newtype CallConv = CallConv CUInt
+newtype COMDATSelectionKind = COMDATSelectionKind CUInt
   deriving (Eq, Read, Show, Typeable, Data)
-#define CC_Rec(n) { #n, LLVM ## n ## CallConv },
-#{inject CALLCONV, CallConv, CallConv, callConv, CC_Rec}
+#define CSK(n) { #n, LLVM_General_COMDAT_Selection_Kind_ ## n },
+#{inject COMDAT_SELECTION_KIND, COMDATSelectionKind, COMDATSelectionKind, comdatSelectionKind, CSK}
+
+newtype DLLStorageClass = DLLStorageClass CUInt
+  deriving (Eq, Read, Show, Typeable, Data)
+#define DLLSC_Rec(n) { #n, LLVM ## n ## StorageClass },
+#{inject DLL_STORAGE_CLASS, DLLStorageClass, DLLStorageClass, dllStorageClass, DLLSC_Rec}
+
+newtype CallingConvention = CallingConvention CUInt
+  deriving (Eq, Read, Show, Typeable, Data)
+#define CC_Rec(l, n) { #l, LLVM_General_CallingConvention_ ## l },
+#{inject CALLING_CONVENTION, CallingConvention, CallingConvention, callingConvention, CC_Rec}
+
+newtype ThreadLocalMode = ThreadLocalMode CUInt
+  deriving (Eq, Read, Show, Typeable, Data)
+#define TLS_Rec(n) { #n, LLVM ## n },
+#{inject THREAD_LOCAL_MODE, ThreadLocalMode, ThreadLocalMode, threadLocalMode, TLS_Rec}
 
 newtype ValueSubclassId = ValueSubclassId CUInt
   deriving (Eq, Read, Show, Typeable, Data)
@@ -196,15 +218,25 @@ newtype TypeKind = TypeKind CUInt
 #define TK_Rec(n) { #n, LLVM ## n ## TypeKind },
 #{inject TYPE_KIND, TypeKind, TypeKind, typeKind, TK_Rec}
 
-newtype ParamAttr = ParamAttr CUInt
-  deriving (Eq, Read, Show, Bits, Typeable, Data, Num)
-#define PA_Rec(n,a) { #n, LLVM ## n ## a },
-#{inject PARAM_ATTR, ParamAttr, ParamAttr, paramAttr, PA_Rec}
+#define COMMA ,
+#define IF_T(z) z
+#define IF_F(z)
+#define IF2(x) IF_ ## x
+#define IF(x) IF2(x)
+#define OR_TT T
+#define OR_TF T
+#define OR_FT T
+#define OR_FF F  
+#define OR(x,y) OR_ ## x ## y
+newtype ParameterAttributeKind = ParameterAttributeKind CUInt
+  deriving (Eq, Read, Show, Typeable, Data)
+#define PAK_Rec(n,p,r,f) IF(OR(p,r))({ #n COMMA LLVM_General_AttributeKind_ ## n} COMMA)
+#{inject ATTRIBUTE_KIND, ParameterAttributeKind, ParameterAttributeKind, parameterAttributeKind, PAK_Rec}
 
-newtype FunctionAttr = FunctionAttr CUInt
-  deriving (Eq, Read, Show, Bits, Typeable, Data, Num)
-#define FA_Rec(n,a) { #n, LLVM ## n ## a },
-#{inject FUNCTION_ATTR, FunctionAttr, FunctionAttr, functionAttr, FA_Rec}
+newtype FunctionAttributeKind = FunctionAttributeKind CUInt
+  deriving (Eq, Read, Show, Typeable, Data)
+#define FAK_Rec(n,p,r,f) IF(f)({ #n COMMA LLVM_General_AttributeKind_ ## n} COMMA)
+#{inject ATTRIBUTE_KIND, FunctionAttributeKind, FunctionAttributeKind, functionAttributeKind, FAK_Rec}
 
 newtype FloatSemantics = FloatSemantics CUInt
   deriving (Eq, Read, Show, Typeable, Data)

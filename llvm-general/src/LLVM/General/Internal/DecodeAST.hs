@@ -5,13 +5,13 @@
   #-}
 module LLVM.General.Internal.DecodeAST where
 
-import Control.Applicative
+import LLVM.General.Prelude
+
 import Control.Monad.State
 import Control.Monad.AnyCont
 
 import Foreign.Ptr
 import Foreign.C
-import Data.Word
 
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
@@ -20,12 +20,16 @@ import qualified Data.Map as Map
 import Data.Array (Array)
 import qualified Data.Array as Array
 
+import qualified LLVM.General.Internal.FFI.Attribute as FFI
+import qualified LLVM.General.Internal.FFI.GlobalValue as FFI
 import qualified LLVM.General.Internal.FFI.PtrHierarchy as FFI
 import qualified LLVM.General.Internal.FFI.Value as FFI
 import qualified LLVM.General.Internal.FFI.Type as FFI
 
 import qualified LLVM.General.AST.Name as A
 import qualified LLVM.General.AST.Operand as A (MetadataNodeID(..))
+import qualified LLVM.General.AST.Attribute as A.A
+import qualified LLVM.General.AST.COMDAT as A.COMDAT
 
 import LLVM.General.Internal.Coding
 import LLVM.General.Internal.String ()
@@ -40,7 +44,10 @@ data DecodeState = DecodeState {
     typesToDefine :: Seq (Ptr FFI.Type),
     metadataNodesToDefine :: Seq (A.MetadataNodeID, Ptr FFI.MDNode),
     metadataNodes :: Map (Ptr FFI.MDNode) A.MetadataNodeID,
-    metadataKinds :: Array Word String
+    metadataKinds :: Array Word String,
+    parameterAttributeSets :: Map FFI.ParameterAttributeSet [A.A.ParameterAttribute],
+    functionAttributeSetIDs :: Map FFI.FunctionAttributeSet A.A.GroupID,
+    comdats :: Map (Ptr FFI.COMDAT) (String, A.COMDAT.SelectionKind)
   }
 initialDecode = DecodeState {
     globalVarNum = Map.empty,
@@ -50,7 +57,10 @@ initialDecode = DecodeState {
     typesToDefine = Seq.empty,
     metadataNodesToDefine = Seq.empty,
     metadataNodes = Map.empty,
-    metadataKinds = Array.listArray (1,0) []
+    metadataKinds = Array.listArray (1,0) [],
+    parameterAttributeSets = Map.empty,
+    functionAttributeSetIDs = Map.empty,
+    comdats = Map.empty
   }
 newtype DecodeAST a = DecodeAST { unDecodeAST :: AnyContT (StateT DecodeState IO) a }
   deriving (
@@ -150,3 +160,13 @@ takeMetadataNodeToDefine = state $ \s -> case Seq.viewr (metadataNodesToDefine s
 
 instance DecodeM DecodeAST A.Name (Ptr FFI.BasicBlock) where
   decodeM = getLocalName
+
+getAttributeGroupID :: FFI.FunctionAttributeSet -> DecodeAST A.A.GroupID
+getAttributeGroupID p = do
+  ids <- gets functionAttributeSetIDs
+  case Map.lookup p ids of
+    Just r -> return r
+    Nothing -> do
+      let r = A.A.GroupID (fromIntegral (Map.size ids))
+      modify $ \s -> s { functionAttributeSetIDs = Map.insert p r (functionAttributeSetIDs s) }
+      return r

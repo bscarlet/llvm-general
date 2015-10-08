@@ -1,8 +1,7 @@
 -- | 'Global's - top-level values in 'Module's - and supporting structures.
 module LLVM.General.AST.Global where
 
-import Data.Data
-import Data.Word
+import LLVM.General.Prelude
 
 import LLVM.General.AST.Name
 import LLVM.General.AST.Type
@@ -11,7 +10,9 @@ import LLVM.General.AST.AddrSpace
 import LLVM.General.AST.Instruction (Named, Instruction, Terminator)
 import qualified LLVM.General.AST.Linkage as L
 import qualified LLVM.General.AST.Visibility as V
+import qualified LLVM.General.AST.DLL as DLL
 import qualified LLVM.General.AST.CallingConvention as CC
+import qualified LLVM.General.AST.ThreadLocalStorage as TLS
 import qualified LLVM.General.AST.Attribute as A
 
 -- | <http://llvm.org/doxygen/classllvm_1_1GlobalValue.html>
@@ -21,13 +22,15 @@ data Global
         name :: Name,
         linkage :: L.Linkage,
         visibility :: V.Visibility,
-        isThreadLocal :: Bool,
+        dllStorageClass :: Maybe DLL.StorageClass,
+        threadLocalMode :: Maybe TLS.Model,
         addrSpace :: AddrSpace,
         hasUnnamedAddr :: Bool,
         isConstant :: Bool,
         type' :: Type,
         initializer :: Maybe Constant,
         section :: Maybe String,
+        comdat :: Maybe String,
         alignment :: Word32
       }
     -- | <http://llvm.org/docs/LangRef.html#aliases>
@@ -35,6 +38,9 @@ data Global
         name :: Name,
         linkage :: L.Linkage,
         visibility :: V.Visibility,
+        dllStorageClass :: Maybe DLL.StorageClass,
+        threadLocalMode :: Maybe TLS.Model,
+        hasUnnamedAddr :: Bool,
         type' :: Type,
         aliasee :: Constant
       }
@@ -42,15 +48,18 @@ data Global
     | Function {
         linkage :: L.Linkage,
         visibility :: V.Visibility,
+        dllStorageClass :: Maybe DLL.StorageClass,
         callingConvention :: CC.CallingConvention,
         returnAttributes :: [A.ParameterAttribute],
         returnType :: Type,
         name :: Name,
         parameters :: ([Parameter],Bool), -- ^ snd indicates varargs
-        functionAttributes :: [A.FunctionAttribute],
+        functionAttributes :: [Either A.GroupID A.FunctionAttribute],
         section :: Maybe String,
+        comdat :: Maybe String,
         alignment :: Word32,
         garbageCollectorName :: Maybe String,
+        prefix :: Maybe Constant,
         basicBlocks :: [BasicBlock]
       }
   deriving (Eq, Read, Show, Typeable, Data)
@@ -72,13 +81,15 @@ globalVariableDefaults =
   name = error "global variable name not defined",
   linkage = L.External,
   visibility = V.Default,
-  isThreadLocal = False,
+  dllStorageClass = Nothing,
+  threadLocalMode = Nothing,
   addrSpace = AddrSpace 0,
   hasUnnamedAddr = False,
   isConstant = False,
   type' = error "global variable type not defined",
   initializer = Nothing,
   section = Nothing,
+  comdat = Nothing,
   alignment = 0
   }
 
@@ -89,6 +100,9 @@ globalAliasDefaults =
     name = error "global alias name not defined",
     linkage = L.External,
     visibility = V.Default,
+    dllStorageClass = Nothing,
+    threadLocalMode = Nothing,
+    hasUnnamedAddr = False,
     type' = error "global alias type not defined",
     aliasee = error "global alias aliasee not defined"
   }
@@ -99,6 +113,7 @@ functionDefaults =
   Function {
     linkage = L.External,
     visibility = V.Default,
+    dllStorageClass = Nothing,
     callingConvention = CC.C,
     returnAttributes = [],
     returnType = error "function return type not defined",
@@ -106,7 +121,9 @@ functionDefaults =
     parameters = ([], False),
     functionAttributes = [],
     section = Nothing,
+    comdat = Nothing,
     alignment = 0,
     garbageCollectorName = Nothing,
+    prefix = Nothing,
     basicBlocks = []
   }

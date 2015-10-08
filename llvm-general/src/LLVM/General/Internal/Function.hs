@@ -1,10 +1,15 @@
 module LLVM.General.Internal.Function where
 
-import Control.Monad
+import LLVM.General.Prelude
+
 import Control.Monad.Trans
 import Control.Monad.AnyCont
 
-import Foreign.Ptr
+import Foreign.C (CUInt)
+import Foreign.Ptr  
+
+import Data.Map (Map)
+import qualified Data.Map as Map
 
 import qualified LLVM.General.Internal.FFI.Function as FFI
 import qualified LLVM.General.Internal.FFI.PtrHierarchy as FFI
@@ -13,34 +18,43 @@ import LLVM.General.Internal.DecodeAST
 import LLVM.General.Internal.EncodeAST
 import LLVM.General.Internal.Value
 import LLVM.General.Internal.Coding
-import LLVM.General.Internal.Attribute ()
+import LLVM.General.Internal.Constant ()
+import LLVM.General.Internal.Attribute
 
 import qualified LLVM.General.AST as A
-import qualified LLVM.General.AST.Attribute as A.A
+import qualified LLVM.General.AST.Constant as A
+import qualified LLVM.General.AST.ParameterAttribute as A.PA  
 
-getFunctionAttrs :: Ptr FFI.Function -> IO [A.A.FunctionAttribute]
-getFunctionAttrs = decodeM <=< FFI.getFunctionAttr
+getMixedAttributeSet :: Ptr FFI.Function -> DecodeAST MixedAttributeSet
+getMixedAttributeSet = decodeM <=< liftIO . FFI.getMixedAttributeSet
 
-setFunctionAttrs :: Ptr FFI.Function -> [A.A.FunctionAttribute] -> IO ()
-setFunctionAttrs f = FFI.addFunctionAttr f <=< encodeM 
+setFunctionAttributes :: Ptr FFI.Function -> MixedAttributeSet -> EncodeAST ()
+setFunctionAttributes f = (liftIO . FFI.setMixedAttributeSet f) <=< encodeM
 
-getParameterAttrs :: Ptr FFI.Parameter -> IO [A.A.ParameterAttribute]
-getParameterAttrs = decodeM <=< FFI.getAttribute
-
-getParameters :: Ptr FFI.Function -> DecodeAST [A.Parameter]
-getParameters f = scopeAnyCont $ do
+getParameters :: Ptr FFI.Function -> Map CUInt [A.PA.ParameterAttribute] -> DecodeAST [A.Parameter]
+getParameters f attrs = scopeAnyCont $ do
   n <- liftIO (FFI.countParams f)
   ps <- allocaArray n
   liftIO $ FFI.getParams f ps
   params <- peekArray n ps
-  forM params $ \param -> 
+  forM (zip params [0..]) $ \(param, i) -> 
     return A.Parameter 
        `ap` typeOf param
        `ap` getLocalName param
-       `ap` (liftIO $ getParameterAttrs param)
+       `ap` (return $ Map.findWithDefault [] i attrs)
   
 getGC :: Ptr FFI.Function -> DecodeAST (Maybe String)
 getGC f = scopeAnyCont $ decodeM =<< liftIO (FFI.getGC f)
 
 setGC :: Ptr FFI.Function -> Maybe String -> EncodeAST ()
 setGC f gc = scopeAnyCont $ liftIO . FFI.setGC f =<< encodeM gc 
+
+getPrefixData :: Ptr FFI.Function -> DecodeAST (Maybe A.Constant)
+getPrefixData f = do
+  has <- decodeM =<< (liftIO $ FFI.hasPrefixData f)
+  if has
+   then decodeM =<< (liftIO $ FFI.getPrefixData f)
+   else return Nothing
+
+setPrefixData :: Ptr FFI.Function -> Maybe A.Constant -> EncodeAST ()
+setPrefixData f = maybe (return ()) (liftIO . FFI.setPrefixData f <=< encodeM)

@@ -6,22 +6,21 @@
   #-}
 module LLVM.General.Internal.PrettyPrint where
 
-import Language.Haskell.TH 
+import LLVM.General.Prelude
+
+import LLVM.General.TH 
 import Language.Haskell.TH.Quote
 
 import Data.Monoid
 import Data.String
-import Data.Data
-import Data.Word
 import Data.Maybe
 
-import Data.List
+import Data.List (intercalate)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Control.Applicative ((<$>),(<*>))
-import Control.Monad.Reader
+import Control.Monad.Reader hiding (sequence, mapM)
 
 data Branch
   = Fixed String
@@ -95,6 +94,7 @@ record name fields = do
   name <+> braces (punctuate comma [ n <+> "=" <+> v | (n,v) <- fields ])
 
 ctor :: QTree -> [QTree] -> QTree
+ctor name [] = name
 ctor name fields = do
   p <- asks precedence
   parensIfNeeded appPrec (foldl (<+>) name fields)
@@ -168,7 +168,7 @@ makePrettyShowInstance n = do
           x -> error $ "unexpected info: " ++ show x
   cs <- mapM (const $ newName "a") tvb
   let cvs = map varT cs
-  sequence . return $ instanceD (cxt [classP (mkName "PrettyShow") [cv] | cv <- cvs]) [t| PrettyShow $(foldl appT (conT n) cvs) |] [
+  sequence . return $ instanceD (cxt [appT (conT (mkName "PrettyShow")) cv | cv <- cvs]) [t| PrettyShow $(foldl appT (conT n) cvs) |] [
     funD (mkName "prettyShow") [
        clause
          [varP (mkName "a")] (

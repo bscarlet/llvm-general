@@ -5,7 +5,8 @@
   #-}
 module LLVM.General.Internal.EncodeAST where
 
-import Control.Applicative
+import LLVM.General.Prelude
+
 import Control.Exception
 import Control.Monad.State
 import Control.Monad.Exceptable
@@ -17,11 +18,14 @@ import Foreign.C
 import Data.Map (Map)
 import qualified Data.Map as Map
 
-import qualified LLVM.General.Internal.FFI.PtrHierarchy as FFI
+import qualified LLVM.General.Internal.FFI.Attribute as FFI  
 import qualified LLVM.General.Internal.FFI.Builder as FFI
+import qualified LLVM.General.Internal.FFI.GlobalValue as FFI
+import qualified LLVM.General.Internal.FFI.PtrHierarchy as FFI
 import qualified LLVM.General.Internal.FFI.Value as FFI
 
 import qualified LLVM.General.AST as A
+import qualified LLVM.General.AST.Attribute as A.A
 
 import LLVM.General.Internal.Context
 import LLVM.General.Internal.Coding
@@ -39,7 +43,9 @@ data EncodeState = EncodeState {
       encodeStateAllBlocks :: Map (A.Name, A.Name) (Ptr FFI.BasicBlock),
       encodeStateBlocks :: Map A.Name (Ptr FFI.BasicBlock),
       encodeStateMDNodes :: Map A.MetadataNodeID (Ptr FFI.MDNode),
-      encodeStateNamedTypes :: Map A.Name (Ptr FFI.Type)
+      encodeStateNamedTypes :: Map A.Name (Ptr FFI.Type),
+      encodeStateAttributeGroups :: Map A.A.GroupID FFI.FunctionAttributeSet,
+      encodeStateCOMDATs :: Map String (Ptr FFI.COMDAT)
     }
 
 newtype EncodeAST a = EncodeAST { unEncodeAST :: AnyContT (ExceptableT String (StateT EncodeState IO)) a }
@@ -73,7 +79,9 @@ runEncodeAST context@(Context ctx) (EncodeAST a) = unExceptableT $ makeExceptabl
               encodeStateAllBlocks = Map.empty,
               encodeStateBlocks = Map.empty,
               encodeStateMDNodes = Map.empty,
-              encodeStateNamedTypes = Map.empty
+              encodeStateNamedTypes = Map.empty,
+              encodeStateAttributeGroups = Map.empty,
+              encodeStateCOMDATs = Map.empty
             }
       flip evalStateT initEncodeState . runExceptableT . flip runAnyContT return $ a
 
@@ -114,6 +122,12 @@ defineGlobal n v = modify $ \b -> b { encodeStateGlobals =  Map.insert n (FFI.up
 defineMDNode :: A.MetadataNodeID -> Ptr FFI.MDNode -> EncodeAST ()
 defineMDNode n v = modify $ \b -> b { encodeStateMDNodes = Map.insert n (FFI.upCast v) (encodeStateMDNodes b) }
 
+defineAttributeGroup :: A.A.GroupID -> FFI.FunctionAttributeSet -> EncodeAST ()
+defineAttributeGroup gid attrs = modify $ \b -> b { encodeStateAttributeGroups = Map.insert gid attrs (encodeStateAttributeGroups b) }
+
+defineCOMDAT :: String -> Ptr FFI.COMDAT -> EncodeAST ()
+defineCOMDAT name cd = modify $ \b -> b { encodeStateCOMDATs = Map.insert name cd (encodeStateCOMDATs b) }
+
 refer :: (Show n, Ord n) => (EncodeState -> Map n v) -> n -> EncodeAST v -> EncodeAST v
 refer r n f = do
   mop <- gets $ Map.lookup n . r
@@ -122,11 +136,13 @@ refer r n f = do
 undefinedReference :: Show n => String -> n -> EncodeAST a
 undefinedReference m n = throwError $ "reference to undefined " ++ m ++ ": " ++ show n
 
-referOrThrow :: (Show n, Ord n) => (EncodeState -> Map n (Ptr p)) -> String -> n -> EncodeAST (Ptr p)
+referOrThrow :: (Show n, Ord n) => (EncodeState -> Map n v) -> String -> n -> EncodeAST v
 referOrThrow r m n = refer r n $ undefinedReference m n
 
 referGlobal = referOrThrow encodeStateGlobals "global"
 referMDNode = referOrThrow encodeStateMDNodes "metadata node"
+referAttributeGroup = referOrThrow encodeStateAttributeGroups "attribute group"
+referCOMDAT = referOrThrow encodeStateCOMDATs "COMDAT"
 
 defineBasicBlock :: A.Name -> A.Name -> Ptr FFI.BasicBlock -> EncodeAST ()
 defineBasicBlock fn n b = modify $ \s -> s {

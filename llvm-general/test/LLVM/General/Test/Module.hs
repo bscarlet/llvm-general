@@ -18,16 +18,20 @@ import LLVM.General.Analysis
 import LLVM.General.Diagnostic
 import LLVM.General.Target
 import LLVM.General.AST
-import LLVM.General.AST.Type as A.T
+import LLVM.General.AST.Type as T
 import LLVM.General.AST.AddrSpace
 import qualified LLVM.General.AST.IntegerPredicate as IPred
 
 import qualified LLVM.General.AST.Linkage as L
 import qualified LLVM.General.AST.Visibility as V
+import qualified LLVM.General.AST.DLL as DLL
 import qualified LLVM.General.AST.CallingConvention as CC
-import qualified LLVM.General.AST.Attribute as A
+import qualified LLVM.General.AST.FunctionAttribute as FA
+import qualified LLVM.General.AST.ParameterAttribute as PA
+import qualified LLVM.General.AST.ThreadLocalStorage as TLS
 import qualified LLVM.General.AST.Global as G
 import qualified LLVM.General.AST.Constant as C
+import qualified LLVM.General.AST.COMDAT as COMDAT
 
 import qualified LLVM.General.Relocation as R
 import qualified LLVM.General.CodeModel as CM
@@ -38,18 +42,22 @@ handString = "; ModuleID = '<string>'\n\
     \%0 = type { i32, %1*, %0* }\n\
     \%1 = type opaque\n\
     \\n\
+    \$bob = comdat largest\n\
+    \\n\
     \@0 = global i32 1\n\
-    \@1 = external protected addrspace(3) global i32, section \"foo\"\n\
+    \@1 = external protected addrspace(3) global i32, section \"foo\", comdat $bob\n\
     \@2 = unnamed_addr global i8 2\n\
-    \@3 = external global %0\n\
+    \@3 = external dllimport global %0\n\
     \@4 = external global [4294967296 x i32]\n\
     \@.argyle = thread_local global i32 0\n\
+    \@5 = thread_local(localdynamic) global i32 1\n\
     \\n\
-    \@three = private alias i32 addrspace(3)* @1\n\
-    \@two = alias i32 addrspace(3)* @three\n\
+    \@three = alias private i32 addrspace(3)* @1\n\
+    \@two = unnamed_addr alias i32 addrspace(3)* @three\n\
+    \@one = thread_local(initialexec) alias i32* @5\n\
     \\n\
-    \define i32 @bar() {\n\
-    \  %1 = call zeroext i32 @foo(i32 inreg align 16 1, i8 signext 4) #0\n\
+    \define i32 @bar() prefix i32 1 {\n\
+    \  %1 = musttail call zeroext i32 @foo(i32 inreg align 16 1, i8 signext 4) #0\n\
     \  ret i32 %1\n\
     \}\n\
     \\n\
@@ -71,7 +79,7 @@ handString = "; ModuleID = '<string>'\n\
     \  ret i32 %r\n\
     \}\n\
     \\n\
-    \attributes #0 = { nounwind readnone uwtable }\n"
+    \attributes #0 = { nounwind readnone uwtable \"eep\" }\n"
 
 handAST = Module "<string>" Nothing Nothing [
       TypeDefinition (UnName 0) (
@@ -91,7 +99,8 @@ handAST = Module "<string>" Nothing Nothing [
         G.visibility = V.Protected,
         G.type' = i32,
         G.addrSpace = AddrSpace 3,
-        G.section = Just "foo"
+        G.section = Just "foo",
+        G.comdat = Just "bob"
       },
       GlobalDefinition $ globalVariableDefaults {
         G.name = UnName 2,
@@ -101,6 +110,7 @@ handAST = Module "<string>" Nothing Nothing [
       },
       GlobalDefinition $ globalVariableDefaults {
         G.name = UnName 3,
+        G.dllStorageClass = Just DLL.Import,
         G.type' = NamedTypeReference (UnName 0)
       },
       GlobalDefinition $ globalVariableDefaults {
@@ -111,7 +121,13 @@ handAST = Module "<string>" Nothing Nothing [
         G.name = Name ".argyle",
         G.type' = i32,
         G.initializer = Just (C.Int 32 0),
-        G.isThreadLocal = True
+        G.threadLocalMode = Just TLS.GeneralDynamic
+      },
+      GlobalDefinition $ globalVariableDefaults {
+        G.name = UnName 5,
+        G.type' = i32,
+        G.threadLocalMode = Just TLS.LocalDynamic,
+        G.initializer = Just (C.Int 32 1)
       },
       GlobalDefinition $ globalAliasDefaults {
          G.name = Name "three",
@@ -121,24 +137,32 @@ handAST = Module "<string>" Nothing Nothing [
       },
       GlobalDefinition $ globalAliasDefaults {
         G.name = Name "two",
+        G.hasUnnamedAddr = True,
         G.type' = PointerType i32 (AddrSpace 3),
         G.aliasee = C.GlobalReference (PointerType i32 (AddrSpace 3)) (Name "three")
+      },
+      GlobalDefinition $ globalAliasDefaults {
+        G.name = Name "one",
+        G.type' = ptr i32,
+        G.aliasee = C.GlobalReference (ptr i32) (UnName 5),
+        G.threadLocalMode = Just TLS.InitialExec
       },
       GlobalDefinition $ functionDefaults {
         G.returnType = i32,
         G.name = Name "bar",
+        G.prefix = Just (C.Int 32 1),
         G.basicBlocks = [
           BasicBlock (UnName 0) [
            UnName 1 := Call {
-             isTailCall = False,
+             tailCallKind = Just MustTail,
              callingConvention = CC.C,
-             returnAttributes = [A.ZeroExt],
+             returnAttributes = [PA.ZeroExt],
              function = Right (ConstantOperand (C.GlobalReference (ptr (FunctionType i32 [i32, i8] False)) (Name "foo"))),
              arguments = [
-              (ConstantOperand (C.Int 32 1), [A.InReg, A.Alignment 16]),
-              (ConstantOperand (C.Int 8 4), [A.SignExt])
+              (ConstantOperand (C.Int 32 1), [PA.InReg, PA.Alignment 16]),
+              (ConstantOperand (C.Int 8 4), [PA.SignExt])
              ],
-             functionAttributes = [A.NoUnwind, A.ReadNone, A.UWTable],
+             functionAttributes = [Left (FA.GroupID 0)],
              metadata = []
            }
          ] (
@@ -147,14 +171,14 @@ handAST = Module "<string>" Nothing Nothing [
         ]
       },
       GlobalDefinition $ functionDefaults {
-        G.returnAttributes = [A.ZeroExt],
+        G.returnAttributes = [PA.ZeroExt],
         G.returnType = i32,
         G.name = Name "foo",
         G.parameters = ([
-          Parameter i32 (Name "x") [A.InReg, A.Alignment 16],
-          Parameter i8 (Name "y") [A.SignExt]
+          Parameter i32 (Name "x") [PA.InReg, PA.Alignment 16],
+          Parameter i8 (Name "y") [PA.SignExt]
          ], False),
-        G.functionAttributes = [A.NoUnwind, A.ReadNone, A.UWTable],
+        G.functionAttributes = [Left (FA.GroupID 0)],
         G.basicBlocks = [
           BasicBlock (UnName 0) [
            UnName 1 := Mul {
@@ -206,8 +230,10 @@ handAST = Module "<string>" Nothing Nothing [
              Do $ Ret (Just (LocalReference i32 (Name "r"))) []
            )
          ]
-        }
-      ]
+        },
+      FunctionAttributes (FA.GroupID 0) [FA.NoUnwind, FA.ReadNone, FA.UWTable, FA.StringAttribute "eep" ""],
+      COMDAT "bob" COMDAT.Largest
+     ]
 
 tests = testGroup "Module" [
   testGroup "withModuleFromString" [
@@ -293,7 +319,7 @@ tests = testGroup "Module" [
               \}\n"
           ast = Module "<string>" Nothing Nothing [
              GlobalDefinition $ functionDefaults {
-                G.returnType = A.T.void,
+                G.returnType = T.void,
                 G.name = Name "trouble",
                 G.basicBlocks = [
                  BasicBlock (Name "entry") [

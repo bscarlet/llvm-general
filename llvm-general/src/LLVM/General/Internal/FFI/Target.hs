@@ -4,6 +4,8 @@
   #-}
 module LLVM.General.Internal.FFI.Target where
 
+import LLVM.General.Prelude
+
 import Foreign.Ptr
 import Foreign.C
 
@@ -80,6 +82,11 @@ foreign import ccall unsafe "LLVM_General_TargetMachineEmit" targetMachineEmit :
   -> Ptr (OwnerTransfered CString)
   -> Ptr RawOStream
   -> IO LLVMBool
+
+data TargetLowering
+
+foreign import ccall unsafe "LLVM_General_GetTargetLowering" getTargetLowering ::
+  Ptr TargetMachine -> IO (Ptr TargetLowering)
 
 foreign import ccall unsafe "LLVM_General_GetDefaultTargetTriple" getDefaultTargetTriple :: 
   IO (OwnerTransfered CString)

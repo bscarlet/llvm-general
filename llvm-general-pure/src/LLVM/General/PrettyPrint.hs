@@ -17,8 +17,8 @@ module LLVM.General.PrettyPrint (
   imports
   ) where
 
-import Control.Monad
-import Data.Functor
+import LLVM.General.Prelude
+
 import Data.Monoid
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -31,14 +31,18 @@ import qualified LLVM.General.AST.AddrSpace as A
 import qualified LLVM.General.AST.Float as A
 import qualified LLVM.General.AST.FloatingPointPredicate as A
 import qualified LLVM.General.AST.IntegerPredicate as A
-import qualified LLVM.General.AST.Attribute as A
+import qualified LLVM.General.AST.FunctionAttribute as A
+import qualified LLVM.General.AST.ParameterAttribute as A  
 import qualified LLVM.General.AST.CallingConvention as A
 import qualified LLVM.General.AST.Visibility as A
+import qualified LLVM.General.AST.DLL as A.DLL
+import qualified LLVM.General.AST.COMDAT as A.COMDAT
 import qualified LLVM.General.AST.Linkage as A
+import qualified LLVM.General.AST.ThreadLocalStorage as A.TLS
 import qualified LLVM.General.AST.InlineAssembly as A
 import qualified LLVM.General.AST.RMWOperation as A
 
-liftM concat $ mapM makePrettyShowInstance [
+fmap concat $ mapM makePrettyShowInstance [
   ''A.Module,
   ''A.Definition,
   ''A.DataLayout,
@@ -63,10 +67,13 @@ liftM concat $ mapM makePrettyShowInstance [
   ''A.Parameter,
   ''A.CallingConvention,
   ''A.Visibility,
+  ''A.DLL.StorageClass,
+  ''A.COMDAT.SelectionKind,
   ''A.Linkage,
   ''A.SomeFloat,
   ''A.Named,
   ''A.Terminator,
+  ''A.TailCallKind,
   ''A.Instruction,
   ''A.LandingPadClause,
   ''A.InlineAssembly,
@@ -75,6 +82,8 @@ liftM concat $ mapM makePrettyShowInstance [
   ''A.FastMathFlags,
   ''A.SynchronizationScope,
   ''A.MemoryOrdering,
+  ''A.GroupID,
+  ''A.TLS.Model,
   ''Either,
   ''Maybe
  ]
@@ -132,6 +141,8 @@ shortASTPrefixScheme = PrefixScheme $ Map.fromList [
   ("LLVM.General.AST.Global", Just "G"),
   ("LLVM.General.AST.CallingConvention", Just "CC"),
   ("LLVM.General.AST.Visibility", Just "V"),
+  ("LLVM.General.AST.DLL", Just "DLL"),
+  ("LLVM.General.AST.COMDAT", Just "COMDAT"),
   ("LLVM.General.AST.Linkage", Just "L")
  ]
 

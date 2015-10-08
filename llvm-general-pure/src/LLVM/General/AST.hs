@@ -16,7 +16,7 @@ module LLVM.General.AST (
   module LLVM.General.AST.Type
   ) where
 
-import Data.Data
+import LLVM.General.Prelude
 
 import LLVM.General.AST.Name
 import LLVM.General.AST.Type (Type(..), FloatingPointFormat(..))
@@ -24,6 +24,8 @@ import LLVM.General.AST.Global
 import LLVM.General.AST.Operand
 import LLVM.General.AST.Instruction
 import LLVM.General.AST.DataLayout
+import qualified LLVM.General.AST.Attribute as A
+import qualified LLVM.General.AST.COMDAT as COMDAT
 
 -- | Any thing which can be at the top level of a 'Module'
 data Definition 
@@ -32,6 +34,8 @@ data Definition
   | MetadataNodeDefinition MetadataNodeID [Maybe Operand]
   | NamedMetadataDefinition String [MetadataNodeID]
   | ModuleInlineAssembly String
+  | FunctionAttributes A.GroupID [A.FunctionAttribute]
+  | COMDAT String COMDAT.SelectionKind
     deriving (Eq, Read, Show, Typeable, Data)
 
 -- | <http://llvm.org/docs/LangRef.html#modulestructure>

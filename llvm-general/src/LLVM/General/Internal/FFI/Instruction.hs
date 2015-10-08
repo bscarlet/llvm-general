@@ -6,10 +6,12 @@
   #-}
 module LLVM.General.Internal.FFI.Instruction where
 
-import Control.Monad
+import LLVM.General.Prelude
+
 import Foreign.Ptr
 import Foreign.C
 
+import LLVM.General.Internal.FFI.Attribute
 import LLVM.General.Internal.FFI.PtrHierarchy
 import LLVM.General.Internal.FFI.LLVMCTypes
 
@@ -32,33 +34,27 @@ foreign import ccall unsafe "LLVMGetICmpPredicate" getICmpPredicate ::
 foreign import ccall unsafe "LLVM_General_GetFCmpPredicate" getFCmpPredicate ::
   Ptr Instruction -> IO FCmpPredicate
 
-foreign import ccall unsafe "LLVMGetInstructionCallConv" getInstructionCallConv ::
-  Ptr Instruction -> IO CallConv
+foreign import ccall unsafe "LLVM_General_GetCallSiteCallingConvention" getCallSiteCallingConvention ::
+  Ptr Instruction -> IO CallingConvention
 
-foreign import ccall unsafe "LLVMSetInstructionCallConv" setInstructionCallConv ::
-  Ptr Instruction -> CallConv -> IO ()
+foreign import ccall unsafe "LLVM_General_SetCallSiteCallingConvention" setCallSiteCallingConvention ::
+  Ptr Instruction -> CallingConvention -> IO ()
 
-foreign import ccall unsafe "LLVMIsTailCall" isTailCall ::
-  Ptr Instruction -> IO LLVMBool
+foreign import ccall unsafe "LLVM_General_GetTailCallKind" getTailCallKind ::
+  Ptr Instruction -> IO TailCallKind
 
-foreign import ccall unsafe "LLVMSetTailCall" setTailCall ::
-  Ptr Instruction -> LLVMBool -> IO ()
+foreign import ccall unsafe "LLVM_General_SetTailCallKind" setTailCallKind ::
+  Ptr Instruction -> TailCallKind -> IO ()
 
-foreign import ccall unsafe "LLVM_General_GetCallInstCalledValue" getCallInstCalledValue ::
+foreign import ccall unsafe "LLVM_General_GetCallSiteCalledValue" getCallSiteCalledValue ::
   Ptr Instruction -> IO (Ptr Value)
 
-foreign import ccall unsafe "LLVM_General_GetCallInstFunctionAttr" getCallInstFunctionAttr ::
-  Ptr Instruction -> IO FunctionAttr
+foreign import ccall unsafe "LLVM_General_GetCallSiteAttributeSet" getCallSiteAttributeSet ::
+  Ptr Instruction -> IO MixedAttributeSet
 
-foreign import ccall unsafe "LLVM_General_AddCallInstFunctionAttr" addCallInstFunctionAttr ::
-  Ptr Instruction -> FunctionAttr -> IO ()
-
-foreign import ccall unsafe "LLVM_General_GetCallInstAttr" getCallInstAttr ::
-  Ptr Instruction -> CUInt -> IO ParamAttr
-
-foreign import ccall unsafe "LLVM_General_AddCallInstAttr" addCallInstAttr ::
-  Ptr Instruction -> CUInt -> ParamAttr -> IO ()
-
+foreign import ccall unsafe "LLVM_General_SetCallSiteAttributeSet" setCallSiteAttributeSet ::
+  Ptr Instruction -> MixedAttributeSet -> IO ()
+                     
 foreign import ccall unsafe "LLVMAddIncoming" addIncoming' ::
   Ptr Instruction -> Ptr (Ptr Value) -> Ptr (Ptr BasicBlock) -> CUInt -> IO ()
 

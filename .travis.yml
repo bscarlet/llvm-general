@@ -1,0 +1,26 @@
+language: haskell
+env:
+ - GHCVER=7.6.3 CABALVER=1.18
+ - GHCVER=7.8.3 CABALVER=1.18
+ - GHCVER=7.10.1 CABALVER=1.22
+before_install:
+ - sudo sh -c "echo 'deb http://llvm.org/apt/precise/ llvm-toolchain-precise-3.5 main' >> /etc/apt/sources.list"
+ - wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key | sudo apt-key add -
+ - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+ - sudo apt-get update
+ - sudo apt-get install gcc-4.8 g++-4.8
+ - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 20
+ - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 20
+ - sudo apt-get install libedit-dev llvm-3.5-dev
+ - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
+ - travis_retry sudo apt-get update
+ - travis_retry sudo apt-get install cabal-install-$CABALVER ghc-$GHCVER
+ - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+ - cabal --version
+ - sudo /opt/ghc/$GHCVER/bin/ghc-pkg recache
+ - /opt/ghc/$GHCVER/bin/ghc-pkg recache --user
+ - cabal update
+install:
+  - cabal install --only-dependencies --enable-tests --force-reinstall llvm-general-pure/ llvm-general/
+script:
+  - cabal install --enable-tests llvm-general-pure/ llvm-general/

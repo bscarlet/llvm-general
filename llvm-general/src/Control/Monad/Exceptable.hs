@@ -1,10 +1,11 @@
 {-# LANGUAGE
   GeneralizedNewtypeDeriving,
   MultiParamTypeClasses,
-  UndecidableInstances
+  UndecidableInstances,
+  CPP
   #-}
 
-module Control.Monad.Exceptable(
+module Control.Monad.Exceptable (
       -- * MonadError class
     MonadError(..),
 
@@ -32,7 +33,6 @@ module Control.Monad.Exceptable(
     Except.Except,
     Except.ExceptT,
 
-    module Control.Monad,
     module Control.Monad.Fix,
     module Control.Monad.Trans,
     -- * Example 1: Custom Error Data Type
@@ -42,24 +42,25 @@ module Control.Monad.Exceptable(
     -- $ExceptTExample
     ) where
 
+import Prelude
+
 import qualified Control.Monad.Trans.Except as Except
 
-import  Control.Monad.Trans
---import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Trans
 import Control.Monad.Signatures
---import Control.Monad.Trans.Class
 import Data.Functor.Classes
 import Data.Functor.Identity
 
---import qualified  Control.Monad.AnyCont.Class as AnyCont
-import  Control.Monad.State.Class as State
+import Control.Monad.State.Class as State
 import Control.Monad.Error.Class as Error
 
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Fix
+#if __GLASGOW_HASKELL__ < 710
 import Data.Foldable
 import Data.Traversable (Traversable(traverse))
+#endif
 
 
 {- |

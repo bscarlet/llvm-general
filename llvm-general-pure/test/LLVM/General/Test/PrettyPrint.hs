@@ -8,35 +8,39 @@ import LLVM.General.PrettyPrint
 
 import LLVM.General.AST
 import LLVM.General.AST.Type
+import LLVM.General.AST.Global
 import qualified LLVM.General.AST.Linkage as L
 import qualified LLVM.General.AST.Visibility as V
+import qualified LLVM.General.AST.DLL as DLL
 import qualified LLVM.General.AST.CallingConvention as CC
 import qualified LLVM.General.AST.Constant as C
 
 tests = testGroup "PrettyPrint" [
   testCase "basic" $ do
     let ast = Module "<string>" Nothing Nothing [
-         GlobalDefinition $ Function L.External V.Default CC.C [] i32 (Name "foo") ([
-             Parameter i32 (Name "x") []
-            ],False)
-            [] Nothing 0 Nothing
-          [
-           BasicBlock (UnName 0) [
-            UnName 1 := Mul {
-              nsw = True,
-              nuw = False,
-              operand0 = ConstantOperand (C.Int 32 1),
-              operand1 = ConstantOperand (C.Int 32 1),
-              metadata = []
-            }
-            ] (
-              Do $ Br (Name "here") []
-            ),
-           BasicBlock (Name "here") [
-            ] (
-              Do $ Ret (Just (LocalReference i32 (UnName 1))) []
-            )
-          ]
+          GlobalDefinition $ functionDefaults {
+            dllStorageClass = Just DLL.Export,
+            returnType = i32,
+            name = Name "foo",
+            parameters = ([Parameter i32 (Name "x") []], False),
+            basicBlocks = [
+              BasicBlock (UnName 0) [
+                UnName 1 := Mul {
+                  nsw = True,
+                  nuw = False,
+                  operand0 = ConstantOperand (C.Int 32 1),
+                  operand1 = ConstantOperand (C.Int 32 1),
+                  metadata = []
+                }
+               ] (
+                 Do $ Br (Name "here") []
+               ),
+              BasicBlock (Name "here") [
+               ] (
+                 Do $ Ret (Just (LocalReference i32 (UnName 1))) []
+               )
+             ]
+           }
          ]
         s = "A.Module {\n\
             \  A.moduleName = \"<string>\",\n\
@@ -46,6 +50,7 @@ tests = testGroup "PrettyPrint" [
             \    A.GlobalDefinition A.G.Function {\n\
             \      A.G.linkage = A.L.External,\n\
             \      A.G.visibility = A.V.Default,\n\
+            \      A.G.dllStorageClass = Just A.DLL.Export,\n\
             \      A.G.callingConvention = A.CC.C,\n\
             \      A.G.returnAttributes = [],\n\
             \      A.G.returnType = A.IntegerType {A.typeBits = 32},\n\
@@ -53,8 +58,10 @@ tests = testGroup "PrettyPrint" [
             \      A.G.parameters = ([A.G.Parameter A.IntegerType { A.typeBits = 32 } (A.Name \"x\") []], False),\n\
             \      A.G.functionAttributes = [],\n\
             \      A.G.section = Nothing,\n\
+            \      A.G.comdat = Nothing,\n\
             \      A.G.alignment = 0,\n\
             \      A.G.garbageCollectorName = Nothing,\n\
+            \      A.G.prefix = Nothing,\n\
             \      A.G.basicBlocks = [\n\
             \        A.G.BasicBlock (A.UnName 0) [\n\
             \          A.UnName 1 A.:= A.Mul {\n\
@@ -85,8 +92,10 @@ tests = testGroup "PrettyPrint" [
       \import qualified LLVM.General.AST as A\n\
       \import qualified LLVM.General.AST.AddrSpace as A\n\
       \import qualified LLVM.General.AST.Attribute as A.A\n\
+      \import qualified LLVM.General.AST.COMDAT as A.COMDAT\n\
       \import qualified LLVM.General.AST.CallingConvention as A.CC\n\
       \import qualified LLVM.General.AST.Constant as A.C\n\
+      \import qualified LLVM.General.AST.DLL as A.DLL\n\
       \import qualified LLVM.General.AST.DataLayout as A\n\
       \import qualified LLVM.General.AST.Float as A\n\
       \import qualified LLVM.General.AST.FloatingPointPredicate as A.FPred\n\

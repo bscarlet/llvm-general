@@ -2,8 +2,7 @@
 -- <http://llvm.org/docs/LangRef.html#instruction-reference>
 module LLVM.General.AST.Instruction where
 
-import Data.Data
-import Data.Word
+import LLVM.General.Prelude
 
 import LLVM.General.AST.Type
 import LLVM.General.AST.Name
@@ -13,7 +12,8 @@ import LLVM.General.AST.IntegerPredicate (IntegerPredicate)
 import LLVM.General.AST.FloatingPointPredicate (FloatingPointPredicate)
 import LLVM.General.AST.RMWOperation (RMWOperation)
 import LLVM.General.AST.CallingConvention (CallingConvention)
-import LLVM.General.AST.Attribute (ParameterAttribute, FunctionAttribute)
+import qualified LLVM.General.AST.ParameterAttribute as PA (ParameterAttribute)
+import qualified LLVM.General.AST.FunctionAttribute as FA (FunctionAttribute, GroupID)
 
 -- | <http://llvm.org/docs/LangRef.html#metadata-nodes-and-metadata-strings>
 -- Metadata can be attached to an instruction
@@ -48,10 +48,10 @@ data Terminator
     }
   | Invoke {
       callingConvention' :: CallingConvention,
-      returnAttributes' :: [ParameterAttribute],
+      returnAttributes' :: [PA.ParameterAttribute],
       function' :: CallableOperand,
-      arguments' :: [(Operand, [ParameterAttribute])],
-      functionAttributes' :: [FunctionAttribute],
+      arguments' :: [(Operand, [PA.ParameterAttribute])],
+      functionAttributes' :: [Either FA.GroupID FA.FunctionAttribute],
       returnDest :: Name,
       exceptionDest :: Name,
       metadata' :: InstructionMetadata
@@ -101,6 +101,11 @@ type Atomicity = (SynchronizationScope, MemoryOrdering)
 data LandingPadClause
     = Catch Constant
     | Filter Constant
+    deriving (Eq, Ord, Read, Show, Typeable, Data)
+
+-- | For the call instruction
+-- <http://llvm.org/docs/LangRef.html#call-instruction>
+data TailCallKind = Tail | MustTail
     deriving (Eq, Ord, Read, Show, Typeable, Data)
 
 -- | non-terminator instructions:
@@ -347,12 +352,12 @@ data Instruction
       metadata :: InstructionMetadata
   } 
   | Call {
-      isTailCall :: Bool,
+      tailCallKind :: Maybe TailCallKind,
       callingConvention :: CallingConvention,
-      returnAttributes :: [ParameterAttribute],
+      returnAttributes :: [PA.ParameterAttribute],
       function :: CallableOperand,
-      arguments :: [(Operand, [ParameterAttribute])],
-      functionAttributes :: [FunctionAttribute],
+      arguments :: [(Operand, [PA.ParameterAttribute])],
+      functionAttributes :: [Either FA.GroupID FA.FunctionAttribute],
       metadata :: InstructionMetadata
   }
   | Select { 

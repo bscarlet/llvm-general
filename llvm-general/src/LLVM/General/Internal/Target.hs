@@ -6,11 +6,11 @@
   #-}
 module LLVM.General.Internal.Target where
 
-import Control.Monad hiding (forM)
+import LLVM.General.Prelude
+
 import Control.Monad.Trans.Except (runExcept)
-import Control.Monad.Exceptable hiding (forM)
+import Control.Monad.Exceptable
 import Control.Exception
-import Data.Traversable (forM)
 import Control.Monad.AnyCont
 
 import Foreign.Ptr
@@ -227,6 +227,13 @@ withTargetMachine
       FFI.disposeTargetMachine
       . (. TargetMachine)
 
+-- | <http://llvm.org/doxygen/classllvm_1_1TargetLowering.html>
+newtype TargetLowering = TargetLowering (Ptr FFI.TargetLowering)
+
+-- | get the 'TargetLowering' of a 'TargetMachine'
+getTargetLowering :: TargetMachine -> IO TargetLowering
+getTargetLowering (TargetMachine tm) = TargetLowering <$> FFI.getTargetLowering tm
+
 -- | Initialize the native target. This function is called automatically in these Haskell bindings
 -- when creating an 'LLVM.General.ExecutionEngine.ExecutionEngine' which will require it, and so it should
 -- not be necessary to call it separately.
@@ -263,10 +270,10 @@ initializeAllTargets :: IO ()
 initializeAllTargets = FFI.initializeAllTargets
 
 -- | Bracket creation and destruction of a 'TargetMachine' configured for the host
-withDefaultTargetMachine :: (TargetMachine -> IO a) -> ExceptT String IO a
-withDefaultTargetMachine f = do
+withHostTargetMachine :: (TargetMachine -> IO a) -> ExceptT String IO a
+withHostTargetMachine f = do
   liftIO $ initializeAllTargets
-  triple <- liftIO $ getDefaultTargetTriple
+  triple <- liftIO $ getProcessTargetTriple
   cpu <- liftIO $ getHostCPUName
   features <- liftIO $ getHostCPUFeatures
   (target, _) <- lookupTarget Nothing triple

@@ -4,10 +4,11 @@
 module LLVM.General.Target (
    lookupTarget,
    TargetOptions,
-   Target, TargetMachine,
+   Target, TargetMachine, TargetLowering,
    CPUFeature(..),
    withTargetOptions, peekTargetOptions, pokeTargetOptions,
-   withTargetMachine, withDefaultTargetMachine,
+   withTargetMachine, withHostTargetMachine,
+   getTargetLowering,
    getDefaultTargetTriple, getProcessTargetTriple, getHostCPUName, getHostCPUFeatures,
    getTargetMachineDataLayout, initializeNativeTarget, initializeAllTargets,
    TargetLibraryInfo,

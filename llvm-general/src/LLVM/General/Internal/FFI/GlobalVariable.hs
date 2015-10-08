@@ -6,6 +6,8 @@
 -- | FFI functions for handling the LLVM GlobalVariable class
 module LLVM.General.Internal.FFI.GlobalVariable where
 
+import LLVM.General.Prelude
+
 import Foreign.Ptr
 import Foreign.C
 
@@ -26,10 +28,4 @@ foreign import ccall unsafe "LLVMGetInitializer" getInitializer ::
 
 foreign import ccall unsafe "LLVMSetInitializer" setInitializer ::
     Ptr GlobalVariable -> Ptr Constant -> IO ()
-
-foreign import ccall unsafe "LLVMIsThreadLocal" isThreadLocal ::
-    Ptr GlobalVariable -> IO LLVMBool
-
-foreign import ccall unsafe "LLVMSetThreadLocal" setThreadLocal ::
-    Ptr GlobalVariable -> LLVMBool -> IO ()
 
