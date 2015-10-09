@@ -1,5 +1,5 @@
 name: llvm-general
-version: 3.3.14.4
+version: 3.3.15.0
 license: BSD3
 license-file: LICENSE
 author: Benjamin S.Scarlet <fgthb0@greynode.net>
@@ -39,7 +39,7 @@ source-repository this
   type: git
   location: git://github.com/bscarlet/llvm-general.git
   branch: llvm-3.3
-  tag: v3.3.14.4
+  tag: v3.3.15.0
 
 flag shared-llvm
   description: link against llvm shared rather than static library
@@ -205,7 +205,7 @@ test-suite test
     HUnit >= 1.2.4.2,
     test-framework-quickcheck2 >= 0.3.0.1,
     QuickCheck >= 2.5.1.1,
-    llvm-general == 3.3.14.4,
+    llvm-general == 3.3.15.0,
     llvm-general-pure == 3.3.14.4,
     containers >= 0.4.2.1,
     mtl >= 2.1,
