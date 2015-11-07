@@ -31,7 +31,7 @@ source-repository this
 
 library
   ghc-options: -fwarn-unused-imports
-  build-depends: 
+  build-depends:
     base >= 4.6 && < 5,
     transformers >= 0.3.0.0,
     transformers-compat,
@@ -79,7 +79,7 @@ library
 
 test-suite test
   type: exitcode-stdio-1.0
-  build-depends:  
+  build-depends:
     base >= 4.6 && < 5,
     test-framework >= 0.5,
     test-framework-hunit >= 0.2.7,
