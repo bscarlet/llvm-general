@@ -401,11 +401,13 @@ data Instruction
     }
   | LandingPad { 
       type' :: Type,
-      personalityFunction :: Operand,
       cleanup :: Bool,
       clauses :: [LandingPadClause],
       metadata :: InstructionMetadata 
     }
+  | CatchPad {type' :: Type,
+              metadata :: InstructionMetadata}
+  | CleanupPad {metadata :: InstructionMetadata}
   deriving (Eq, Read, Show, Typeable, Data)
 
 -- | Instances of instructions may be given a name, allowing their results to be referenced as 'Operand's.

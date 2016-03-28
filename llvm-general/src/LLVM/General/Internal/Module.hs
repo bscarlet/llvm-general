@@ -44,7 +44,6 @@ import LLVM.General.Internal.BasicBlock
 import LLVM.General.Internal.Coding
 import LLVM.General.Internal.Context
 import LLVM.General.Internal.DecodeAST
-import LLVM.General.Internal.Diagnostic
 import LLVM.General.Internal.EncodeAST
 import LLVM.General.Internal.Function
 import LLVM.General.Internal.Global
@@ -78,8 +77,7 @@ instance Inject String (Either String Diagnostic) where
     inject = Left
 
 genCodingInstance [t| Bool |] ''FFI.LinkerMode [
-  (FFI.linkerModeDestroySource, False),
-  (FFI.linkerModePreserveSource, True)
+  (FFI.linkerModeDestroySource, False)
  ]
 
 -- | link LLVM modules - move or copy parts of a source module into a destination module.
@@ -114,12 +112,12 @@ instance LLVMAssemblyInput File where
 
 -- | parse 'Module' from LLVM assembly
 withModuleFromLLVMAssembly :: LLVMAssemblyInput s
-                              => Context -> s -> (Module -> IO a) -> ExceptT (Either String Diagnostic) IO a
+                              => Context -> s -> (Module -> IO a) -> ExceptT String IO a
 withModuleFromLLVMAssembly (Context c) s f = unExceptableT $ flip runAnyContT return $ do
   mb <- llvmAssemblyMemoryBuffer s
-  smDiag <- anyContToM withSMDiagnostic
-  m <- anyContToM $ bracket (FFI.parseLLVMAssembly c mb smDiag) FFI.disposeModule
-  when (m == nullPtr) $ throwError . Right =<< liftIO (getDiagnostic smDiag)
+  msgPtr <- alloca
+  m <- anyContToM $ bracket (FFI.parseLLVMAssembly c mb msgPtr) FFI.disposeModule
+  when (m == nullPtr) $ throwError =<< decodeM msgPtr
   liftIO $ f (Module m)
 
 -- | generate LLVM assembly from a 'Module'
@@ -169,7 +167,7 @@ writeBitcodeToFile :: File -> Module -> ExceptT String IO ()
 writeBitcodeToFile (File path) (Module m) = unExceptableT $ flip runAnyContT return $ do
   withFileRawOStream path False False $ liftIO . FFI.writeBitcode m
 
-targetMachineEmit :: FFI.CodeGenFileType -> TargetMachine -> Module -> Ptr FFI.RawOStream -> ExceptT String IO ()
+targetMachineEmit :: FFI.CodeGenFileType -> TargetMachine -> Module -> Ptr FFI.RawPWriteStream -> ExceptT String IO ()
 targetMachineEmit fileType (TargetMachine tm) (Module m) os = unExceptableT $ flip runAnyContT return $ do
   msgPtr <- alloca
   r <- decodeM =<< (liftIO $ FFI.targetMachineEmit tm m fileType msgPtr os)
@@ -177,11 +175,11 @@ targetMachineEmit fileType (TargetMachine tm) (Module m) os = unExceptableT $ fl
 
 emitToFile :: FFI.CodeGenFileType -> TargetMachine -> File -> Module -> ExceptT String IO ()
 emitToFile fileType tm (File path) m = unExceptableT$ flip runAnyContT return $ do
-  withFileRawOStream path False False $ targetMachineEmit fileType tm m
+  withFileRawPWriteStream path False False $ targetMachineEmit fileType tm m
 
 emitToByteString :: FFI.CodeGenFileType -> TargetMachine -> Module -> ExceptT String IO BS.ByteString
 emitToByteString fileType tm m = unExceptableT $ flip runAnyContT return $ do
-  withBufferRawOStream $ targetMachineEmit fileType tm m
+  withBufferRawPWriteStream $ targetMachineEmit fileType tm m
 
 -- | write target-specific assembly directly into a file
 writeTargetAssemblyToFile :: TargetMachine -> File -> Module -> ExceptT String IO ()
@@ -251,9 +249,8 @@ withModuleFromAST context@(Context c) (A.Module moduleId dataLayout triple defin
      defineMDNode i t
      return $ do
        n <- encodeM (A.MetadataNode os)
-       liftIO $ FFI.replaceAllUsesWith (FFI.upCast t) (FFI.upCast n)
+       liftIO $ FFI.metadataReplaceAllUsesWith (FFI.upCast t) (FFI.upCast n)
        defineMDNode i n
-       liftIO $ FFI.destroyTemporaryMDNode t
        return $ return ()
 
    A.NamedMetadataDefinition n ids -> return . return . return . return $ do
@@ -306,7 +303,7 @@ withModuleFromAST context@(Context c) (A.Module moduleId dataLayout triple defin
            setThreadLocalMode a' (A.G.threadLocalMode a)
            (liftIO . FFI.setAliasee a') =<< encodeM (A.G.aliasee a)
            return (FFI.upCast a')
-       (A.Function _ _ _ cc rAttrs resultType fName (args, isVarArgs) attrs _ _ _ gc prefix blocks) -> do
+       (A.Function _ _ _ cc rAttrs resultType fName (args, isVarArgs) attrs _ _ _ gc prefix blocks personality) -> do
          typ <- encodeM $ A.FunctionType resultType [t | A.Parameter t _ _ <- args] isVarArgs
          f <- liftIO . withName fName $ \fName -> FFI.addFunction m fName typ
          defineGlobal fName f
@@ -318,6 +315,7 @@ withModuleFromAST context@(Context c) (A.Module moduleId dataLayout triple defin
          setCOMDAT f (A.G.comdat g)
          setAlignment f (A.G.alignment g)
          setGC f gc
+         setPersonalityFn f personality
          forM blocks $ \(A.BasicBlock bName _ _) -> do
            b <- liftIO $ withName bName $ \bName -> FFI.appendBasicBlockInContext c f bName
            defineBasicBlock fName bName b
@@ -432,6 +430,7 @@ moduleAST (Module mod) = runDecodeAST $ do
                  `ap` getGC f
                  `ap` getPrefixData f
                  `ap` decodeBlocks
+                 `ap` getPersonalityFn f
         ]
 
        tds <- getStructDefinitions

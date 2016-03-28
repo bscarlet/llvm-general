@@ -10,6 +10,7 @@
 
 #include "llvm-c/Core.h"
 
+#include "LLVM/General/Internal/FFI/Metadata.hpp"
 #include "LLVM/General/Internal/FFI/AttributeC.hpp"
 #include "LLVM/General/Internal/FFI/Instruction.h"
 #include "LLVM/General/Internal/FFI/CallingConventionC.hpp"
@@ -236,6 +237,14 @@ LLVMBool LLVM_General_IsCleanup(LLVMValueRef v) {
 	return unwrap<LandingPadInst>(v)->isCleanup();
 }
 
+unsigned LLVM_General_GetNumClauses(LLVMValueRef v) {
+    return unwrap<LandingPadInst>(v)->getNumClauses();
+}
+
+LLVMValueRef LLVM_General_GetClause(LLVMValueRef v, unsigned i) {
+    return wrap(unwrap<LandingPadInst>(v)->getClause(i));
+}
+
 void LLVM_General_GetSwitchCases(
 	LLVMValueRef v,
 	LLVMValueRef *values,
@@ -257,10 +266,19 @@ void LLVM_General_GetIndirectBrDests(
 		*dests = wrap(ib->getDestination(i));
 }
 
+inline Metadata **unwrap(LLVMMetadataRef *Vals) {
+  return reinterpret_cast<Metadata**>(Vals);
+}
+
+void LLVM_General_SetMetadata(LLVMValueRef Inst, unsigned KindID, LLVMMetadataRef MD) {
+  MDNode *N = MD ? unwrap<MDNode>(MD) : nullptr;
+  unwrap<Instruction>(Inst)->setMetadata(KindID, N);
+}
+
 unsigned LLVM_General_GetMetadata(
 	LLVMValueRef i,
 	unsigned *kinds,
-	LLVMValueRef *nodes,
+	LLVMMetadataRef *nodes,
 	unsigned nKinds
 ) {
 	SmallVector<std::pair<unsigned, MDNode *>, 4> mds;

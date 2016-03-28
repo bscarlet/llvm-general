@@ -268,7 +268,7 @@ tests = testGroup "Instructions" [
              alignment = 0,
              metadata = [] 
            },
-           "load i32* %2"),
+           "load i32, i32* %2"),
           ("volatile",
            Load {
              volatile = True,
@@ -277,7 +277,7 @@ tests = testGroup "Instructions" [
              alignment = 0,
              metadata = [] 
            },
-           "load volatile i32* %2"),
+           "load volatile i32, i32* %2"),
           ("acquire",
            Load {
              volatile = False,
@@ -286,7 +286,7 @@ tests = testGroup "Instructions" [
              alignment = 1,
              metadata = [] 
            },
-           "load atomic i32* %2 acquire, align 1"),
+           "load atomic i32, i32* %2 acquire, align 1"),
           ("singlethread",
            Load {
              volatile = False,
@@ -295,7 +295,7 @@ tests = testGroup "Instructions" [
              alignment = 1,
              metadata = [] 
            },
-           "load atomic i32* %2 singlethread monotonic, align 1"),
+           "load atomic i32, i32* %2 singlethread monotonic, align 1"),
           ("GEP",
            GetElementPtr {
              inBounds = False,
@@ -303,7 +303,7 @@ tests = testGroup "Instructions" [
              indices = [ a 0 ],
              metadata = [] 
            },
-           "getelementptr i32* %2, i32 %0"),
+           "getelementptr i32, i32* %2, i32 %0"),
           ("inBounds",
            GetElementPtr {
              inBounds = True,
@@ -311,7 +311,7 @@ tests = testGroup "Instructions" [
              indices = [ a 0 ],
              metadata = [] 
            },
-           "getelementptr inbounds i32* %2, i32 %0"),
+           "getelementptr inbounds i32, i32* %2, i32 %0"),
           ("cmpxchg",
            CmpXchg {
              volatile = False,
@@ -485,12 +485,11 @@ tests = testGroup "Instructions" [
                 ptr i8,
                 i32
                ],
-             personalityFunction = ConstantOperand (C.GlobalReference (ptr (FunctionType A.T.void ts False)) (UnName 0)),
              cleanup = cp,
              clauses = cls,
              metadata = []
            },
-           "landingpad { i8*, i32 } personality void (i32, float, i32*, i64, i1, <2 x i32>, { i32, i32 })* @0" ++ s)
+           "landingpad { i8*, i32 }" ++ s)
           | (clsn,cls,clss) <- [
            ("catch",
             [Catch (C.Null (ptr i8))],
@@ -609,7 +608,7 @@ tests = testGroup "Instructions" [
                \@0 = constant i32 42\n\
                \\n\
                \define i32 @1() {\n\
-               \  %1 = load i32* @0, align 1\n\
+               \  %1 = load i32, i32* @0, align 1\n\
                \  ret i32 %1\n\
                \}\n"
     s <- withContext $ \context -> withModuleFromAST' context mAST moduleLLVMAssembly
@@ -763,7 +762,7 @@ tests = testGroup "Instructions" [
        \@0 = global i8* blockaddress(@foo, %2)\n\
        \\n\
        \define void @foo() {\n\
-       \  %1 = load i8** @0\n\
+       \  %1 = load i8*, i8** @0\n\
        \  indirectbr i8* %1, [label %2]\n\
        \\n\
        \; <label>:2                                       ; preds = %0\n\
@@ -775,6 +774,10 @@ tests = testGroup "Instructions" [
         GlobalDefinition $ functionDefaults {
           G.returnType = A.T.void,
           G.name = UnName 0,
+          G.personalityFunction = Just $ C.GlobalReference
+            (ptr (FunctionType A.T.void [i32,i16] False))
+            (UnName 0)
+          ,
           G.parameters = ([
             Parameter i32 (UnName 0) [],
             Parameter i16 (UnName 1) []
@@ -800,11 +803,10 @@ tests = testGroup "Instructions" [
              ),
             BasicBlock (Name "bar") [
              UnName 3 := LandingPad {
-               type' = StructureType False [ 
+               type' = StructureType False [
                   ptr i8,
                   i32
                  ],
-               personalityFunction = ConstantOperand (C.GlobalReference (ptr (FunctionType A.T.void [i32, i16] False)) (UnName 0)),
                cleanup = True,
                clauses = [Catch (C.Null (ptr i8))],
                metadata = []
@@ -817,7 +819,7 @@ tests = testGroup "Instructions" [
         ],
        "; ModuleID = '<string>'\n\
        \\n\
-       \define void @0(i32, i16) {\n\
+       \define void @0(i32, i16) personality void (i32, i16)* @0 {\n\
        \  invoke void @0(i32 4, i16 8)\n\
        \          to label %foo unwind label %bar\n\
        \\n\
@@ -825,12 +827,12 @@ tests = testGroup "Instructions" [
        \  ret void\n\
        \\n\
        \bar:                                              ; preds = %2\n\
-       \  %3 = landingpad { i8*, i32 } personality void (i32, i16)* @0\n\
+       \  %3 = landingpad { i8*, i32 }\n\
        \          cleanup\n\
        \          catch i8* null\n\
        \  ret void\n\
        \}\n"
-     ), (
+      ), (
        "resume",
        Module "<string>" Nothing Nothing [
          GlobalDefinition $ functionDefaults {
