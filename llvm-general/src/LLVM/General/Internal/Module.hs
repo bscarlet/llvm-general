@@ -40,7 +40,7 @@ import qualified LLVM.General.Internal.FFI.Target as FFI
 import qualified LLVM.General.Internal.FFI.Value as FFI
 
 import LLVM.General.Internal.Attribute
-import LLVM.General.Internal.BasicBlock  
+import LLVM.General.Internal.BasicBlock
 import LLVM.General.Internal.Coding
 import LLVM.General.Internal.Context
 import LLVM.General.Internal.DecodeAST
@@ -236,6 +236,19 @@ getDataLayout m = do
   dlString <- decodeM =<< FFI.getDataLayout m
   either fail return . runExcept . parseDataLayout A.BigEndian $ dlString
 
+-- | Build an LLVM.General.'Module' from a
+-- LLVM.General.AST.'LLVM.General.AST.Module' with a 'DataLayout'
+-- appropriate for the given 'TargetMachine'. This is important for
+-- native code generation as it impacts name mangling.
+withModuleFromASTForTargetMachine :: Context -> TargetMachine -> A.Module
+                                  -> (Module -> IO a) -> ExceptT String IO a
+withModuleFromASTForTargetMachine c tm m f =
+  do m' <- case A.moduleDataLayout m of
+             Nothing -> do dl <- liftIO $ getTargetMachineDataLayout tm
+                           return (m { A.moduleDataLayout = Just dl })
+             Just _ -> return m
+     withModuleFromAST c m' f
+
 -- | This function will call disposeModule after the callback
 -- exits. Calling 'deleteModule' prevents double free errors. As long
 -- as you only call functions provided by llvm-general this should not
@@ -267,7 +280,7 @@ withModuleFromAST context@(Context c) (A.Module moduleId sourceFileName dataLayo
      liftIO $ FFI.setCOMDATSelectionKind cd csk
      defineCOMDAT n cd
      return . return . return . return . return $ ()
-     
+
    A.MetadataNodeDefinition i os -> return . return $ do
      t <- liftIO $ FFI.createTemporaryMDNodeInContext context
      defineMDNode i t
