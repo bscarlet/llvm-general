@@ -32,6 +32,10 @@ import LLVM.General.Internal.Context
 import LLVM.General.Internal.EncodeAST
 import LLVM.General.Internal.DecodeAST
 
+inconsistentCases :: Show a => String -> a -> b
+inconsistentCases name attr =
+  error $ "llvm-general internal error: cases inconstistent in " ++ name ++ " encoding for " ++ show attr
+
 instance Monad m => EncodeM m A.PA.ParameterAttribute (Ptr FFI.ParameterAttrBuilder -> EncodeAST ()) where
   encodeM a = return $ \b -> liftIO $ case a of
     A.PA.Alignment v -> FFI.attrBuilderAddAlignment b v
@@ -50,8 +54,8 @@ instance Monad m => EncodeM m A.PA.ParameterAttribute (Ptr FFI.ParameterAttrBuil
       A.PA.InAlloca -> FFI.parameterAttributeKindInAlloca
       A.PA.NonNull -> FFI.parameterAttributeKindNonNull
       A.PA.Returned -> FFI.parameterAttributeKindReturned
-      A.PA.Alignment _ -> error $ "llvm-general internal error: cases inconsistent in ParameterAttribute encoding for " ++ show a
-      A.PA.Dereferenceable _ -> error $ "llvm-general internal error: cases inconsistent in ParameterAttribute encoding for " ++ show a
+      A.PA.Alignment _ -> inconsistentCases "ParameterAttribute" a
+      A.PA.Dereferenceable _ -> inconsistentCases "ParameterAttribute" a
 
 instance Monad m => EncodeM m A.FA.FunctionAttribute (Ptr FFI.FunctionAttrBuilder -> EncodeAST ()) where
   encodeM (A.FA.StringAttribute kind value) = return $ \b -> do
@@ -88,8 +92,8 @@ instance Monad m => EncodeM m A.FA.FunctionAttribute (Ptr FFI.FunctionAttrBuilde
       A.FA.SanitizeAddress -> FFI.functionAttributeKindSanitizeAddress
       A.FA.SanitizeThread -> FFI.functionAttributeKindSanitizeThread
       A.FA.SanitizeMemory -> FFI.functionAttributeKindSanitizeMemory
-      A.FA.StackAlignment _ -> error $ "llvm-general internal error: cases inconsistent in FunctionAttribute encoding for " ++ show a
-      A.FA.StringAttribute _ _ -> error $ "llvm-general internal error: cases inconsistent in FunctionAttribute encoding for " ++ show a
+      A.FA.StackAlignment _ -> inconsistentCases "FunctionAttribute" a
+      A.FA.StringAttribute _ _ -> inconsistentCases "FunctionAttribute" a
 
 instance DecodeM DecodeAST A.PA.ParameterAttribute FFI.ParameterAttribute where
   decodeM a = do
