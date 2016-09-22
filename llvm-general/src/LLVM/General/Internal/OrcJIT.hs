@@ -138,6 +138,14 @@ findSymbol (IRCompileLayer cl dl _) symbol exportedSymbolsOnly = flip runAnyCont
     (FFI.findSymbol cl dl symbol' exportedSymbolsOnly') FFI.disposeSymbol
   decodeM symbol
 
+findSymbolIn :: IRCompileLayer -> ModuleSet -> MangledSymbol -> Bool -> IO JITSymbol
+findSymbolIn (IRCompileLayer cl dl _) (ModuleSet moduleSet) symbol exportedSymbolsOnly = flip runAnyContT return $ do
+  symbol' <- encodeM symbol
+  exportedSymbolsOnly' <- encodeM exportedSymbolsOnly
+  symbol <- anyContToM $ bracket
+    (FFI.findSymbolIn cl dl moduleSet symbol' exportedSymbolsOnly') FFI.disposeSymbol
+  decodeM symbol
+
 addModuleSet :: IRCompileLayer -> [Module] -> SymbolResolver -> IO ModuleSet
 addModuleSet (IRCompileLayer cl dl cleanups) modules resolver = flip runAnyContT return $ do
   resolverAct <- encodeM resolver

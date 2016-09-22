@@ -8,6 +8,7 @@ module LLVM.General.OrcJIT (
     SymbolResolver(..),
     SymbolResolverFn,
     findSymbol,
+    findSymbolIn,
     mangleSymbol,
     withIRCompileLayer,
     withModuleSet,
