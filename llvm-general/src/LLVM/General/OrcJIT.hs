@@ -12,7 +12,12 @@ module LLVM.General.OrcJIT (
     mangleSymbol,
     withIRCompileLayer,
     withModuleSet,
-    withObjectLinkingLayer
+    withObjectLinkingLayer,
+    addModuleSet,
+    createObjectLinkingLayer,
+    createIRCompileLayer,
+    disposeObjectLinkingLayer,
+    disposeIRCompileLayer
   ) where
 
 import           LLVM.General.Internal.OrcJIT

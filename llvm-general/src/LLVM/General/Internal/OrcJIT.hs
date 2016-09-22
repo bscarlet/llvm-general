@@ -172,3 +172,23 @@ withObjectLinkingLayer f =
     FFI.createObjectLinkingLayer
     FFI.disposeObjectLinkingLayer $ \objectLayer ->
       f (ObjectLinkingLayer objectLayer)
+
+createObjectLinkingLayer :: IO ObjectLinkingLayer
+createObjectLinkingLayer = ObjectLinkingLayer <$> FFI.createObjectLinkingLayer
+
+disposeObjectLinkingLayer :: ObjectLinkingLayer -> IO ()
+disposeObjectLinkingLayer (ObjectLinkingLayer oll) =
+  FFI.disposeObjectLinkingLayer oll
+
+createIRCompileLayer :: ObjectLinkingLayer -> TargetMachine -> IO IRCompileLayer
+createIRCompileLayer (ObjectLinkingLayer oll) (TargetMachine tm) = do
+  dl <- FFI.createTargetDataLayout tm
+  cl <- FFI.createIRCompileLayer oll tm
+  cleanup <- newIORef []
+  return (IRCompileLayer cl dl cleanup)
+
+disposeIRCompileLayer :: IRCompileLayer -> IO ()
+disposeIRCompileLayer (IRCompileLayer cl dl cleanup) =
+  do FFI.disposeDataLayout dl
+     FFI.disposeIRCompileLayer cl
+     readIORef cleanup >>= sequence_
