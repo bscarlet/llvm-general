@@ -138,6 +138,14 @@ findSymbol (IRCompileLayer cl dl _) symbol exportedSymbolsOnly = flip runAnyCont
     (FFI.findSymbol cl dl symbol' exportedSymbolsOnly') FFI.disposeSymbol
   decodeM symbol
 
+findSymbolIn :: IRCompileLayer -> ModuleSet -> MangledSymbol -> Bool -> IO JITSymbol
+findSymbolIn (IRCompileLayer cl dl _) (ModuleSet moduleSet) symbol exportedSymbolsOnly = flip runAnyContT return $ do
+  symbol' <- encodeM symbol
+  exportedSymbolsOnly' <- encodeM exportedSymbolsOnly
+  symbol <- anyContToM $ bracket
+    (FFI.findSymbolIn cl dl moduleSet symbol' exportedSymbolsOnly') FFI.disposeSymbol
+  decodeM symbol
+
 addModuleSet :: IRCompileLayer -> [Module] -> SymbolResolver -> IO ModuleSet
 addModuleSet (IRCompileLayer cl dl cleanups) modules resolver = flip runAnyContT return $ do
   resolverAct <- encodeM resolver
@@ -164,3 +172,23 @@ withObjectLinkingLayer f =
     FFI.createObjectLinkingLayer
     FFI.disposeObjectLinkingLayer $ \objectLayer ->
       f (ObjectLinkingLayer objectLayer)
+
+createObjectLinkingLayer :: IO ObjectLinkingLayer
+createObjectLinkingLayer = ObjectLinkingLayer <$> FFI.createObjectLinkingLayer
+
+disposeObjectLinkingLayer :: ObjectLinkingLayer -> IO ()
+disposeObjectLinkingLayer (ObjectLinkingLayer oll) =
+  FFI.disposeObjectLinkingLayer oll
+
+createIRCompileLayer :: ObjectLinkingLayer -> TargetMachine -> IO IRCompileLayer
+createIRCompileLayer (ObjectLinkingLayer oll) (TargetMachine tm) = do
+  dl <- FFI.createTargetDataLayout tm
+  cl <- FFI.createIRCompileLayer oll tm
+  cleanup <- newIORef []
+  return (IRCompileLayer cl dl cleanup)
+
+disposeIRCompileLayer :: IRCompileLayer -> IO ()
+disposeIRCompileLayer (IRCompileLayer cl dl cleanup) =
+  do FFI.disposeDataLayout dl
+     FFI.disposeIRCompileLayer cl
+     readIORef cleanup >>= sequence_

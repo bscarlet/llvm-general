@@ -52,6 +52,14 @@ LLVMJITSymbolRef LLVM_General_IRCompileLayer_findSymbol(
     return new JITSymbol(symbol);
 }
 
+LLVMJITSymbolRef LLVM_General_IRCompileLayer_findSymbolIn(
+    LLVMIRCompileLayerRef compileLayer, LLVMTargetDataRef dataLayout,
+    LLVMModuleSetHandleRef moduleSetHandle,
+    const char *name, LLVMBool exportedSymbolsOnly) {
+  JITSymbol symbol = compileLayer->findSymbolIn(*moduleSetHandle, name, exportedSymbolsOnly);
+    return new JITSymbol(symbol);
+}
+
 void LLVM_General_disposeJITSymbol(LLVMJITSymbolRef symbol) { delete symbol; }
 
 LLVMLambdaResolverRef LLVM_General_createLambdaResolver(

@@ -34,6 +34,9 @@ foreign import ccall safe "LLVM_General_disposeIRCompileLayer" disposeIRCompileL
 foreign import ccall safe "LLVM_General_IRCompileLayer_findSymbol" findSymbol ::
   Ptr IRCompileLayer -> Ptr DataLayout -> CString -> LLVMBool -> IO (Ptr JITSymbol)
 
+foreign import ccall safe "LLVM_General_IRCompileLayer_findSymbolIn" findSymbolIn ::
+  Ptr IRCompileLayer -> Ptr DataLayout -> Ptr ModuleSetHandle -> CString -> LLVMBool -> IO (Ptr JITSymbol)
+
 foreign import ccall safe "LLVM_General_disposeJITSymbol" disposeSymbol ::
   Ptr JITSymbol -> IO ()
 

@@ -8,10 +8,16 @@ module LLVM.General.OrcJIT (
     SymbolResolver(..),
     SymbolResolverFn,
     findSymbol,
+    findSymbolIn,
     mangleSymbol,
     withIRCompileLayer,
     withModuleSet,
-    withObjectLinkingLayer
+    withObjectLinkingLayer,
+    addModuleSet,
+    createObjectLinkingLayer,
+    createIRCompileLayer,
+    disposeObjectLinkingLayer,
+    disposeIRCompileLayer
   ) where
 
 import           LLVM.General.Internal.OrcJIT

@@ -6,13 +6,14 @@ import Test.HUnit
 
 import LLVM.General.Test.Support
 
-import Control.Monad.Trans.Except 
+import Control.Monad.Trans.Except
 import Control.Monad.IO.Class
 
 import Data.Functor
 import qualified Data.List as List
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import qualified System.Info as Info
 
 import LLVM.General.Module
 import LLVM.General.Context
@@ -135,7 +136,7 @@ ast = do
 tests = testGroup "Instrumentation" [
   testGroup "basic" [
     testCase n $ do
-      triple <- getProcessTargetTriple 
+      triple <- getProcessTargetTriple
       withTargetLibraryInfo triple $ \tli -> do
         Right dl <- runExceptT $ withHostTargetMachine getTargetMachineDataLayout
         Right ast <- runExceptT ast
@@ -144,13 +145,13 @@ tests = testGroup "Instrumentation" [
         (names ast') `List.intersect` (names ast) @?= names ast
     | (n,p) <- [
      ("GCOVProfiler", defaultGCOVProfiler),
-{-
-     ("AddressSanitizer", defaultAddressSanitizer),
-     ("AddressSanitizerModule", defaultAddressSanitizerModule),
--}
-     ("MemorySanitizer", defaultMemorySanitizer),
+     -- ("AddressSanitizer", defaultAddressSanitizer),
+     -- ("AddressSanitizerModule", defaultAddressSanitizerModule),
      ("ThreadSanitizer", defaultThreadSanitizer),
-     ("BoundsChecking", BoundsChecking)--,
-    ]
+     ("BoundsChecking", BoundsChecking)
+    ] ++ if Info.os == "linux" -- or FreeBSD
+         then [("MemorySanitizer", defaultMemorySanitizer)]
+         else []
+
    ]
  ]
