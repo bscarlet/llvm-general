@@ -38,13 +38,13 @@ NamedMDNode *LLVM_General_GetOrAddNamedMetadata(LLVMModuleRef m, const char *nam
 NamedMDNode *LLVM_General_GetFirstNamedMetadata(LLVMModuleRef m) {
 	Module *mod = unwrap(m);
 	Module::named_metadata_iterator i = mod->named_metadata_begin();
-	return i == mod->named_metadata_end() ? 0 : i;
+	return i == mod->named_metadata_end() ? 0 : &*i;
 }
 
 NamedMDNode *LLVM_General_GetNextNamedMetadata(NamedMDNode *a) {
-	Module::named_metadata_iterator i = a;
+	Module::named_metadata_iterator i(a);
 	if (++i == a->getParent()->named_metadata_end()) return 0;
-	return i;
+	return &*i;
 }
 
 void LLVM_General_ModuleAppendInlineAsm(LLVMModuleRef m, const char *s, unsigned l) {
