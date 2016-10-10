@@ -16,13 +16,13 @@ matrix:
   include:
     - env: CABALVER=1.24 GHCVER=7.8.4
       compiler: ": #GHC 7.8.4"
-      addons: {apt: {packages: [cabal-install-1.24,ghc-7.8.4,llvm-3.5-dev,gcc-5,g++-5], sources: [hvr-ghc,llvm-toolchain-precise-3.5,ubuntu-toolchain-r-test]}}
+      addons: {apt: {packages: [libedit-dev,cabal-install-1.24,ghc-7.8.4,llvm-3.5-dev,gcc-5,g++-5], sources: [hvr-ghc,llvm-toolchain-precise-3.5,ubuntu-toolchain-r-test]}}
     - env: CABALVER=1.24 GHCVER=7.10.3
       compiler: ": #GHC 7.10.3"
-      addons: {apt: {packages: [cabal-install-1.24,ghc-7.10.3,llvm-3.5-dev,gcc-5,g++-5], sources: [hvr-ghc,llvm-toolchain-precise-3.5,ubuntu-toolchain-r-test]}}
+      addons: {apt: {packages: [libedit-dev,cabal-install-1.24,ghc-7.10.3,llvm-3.5-dev,gcc-5,g++-5], sources: [hvr-ghc,llvm-toolchain-precise-3.5,ubuntu-toolchain-r-test]}}
     - env: CABALVER=1.24 GHCVER=8.0.1
       compiler: ": #GHC 8.0.1"
-      addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1,llvm-3.5-dev,gcc-5,g++-5], sources: [hvr-ghc,llvm-toolchain-precise-3.5,ubuntu-toolchain-r-test]}}
+      addons: {apt: {packages: [libedit-dev,cabal-install-1.24,ghc-8.0.1,llvm-3.5-dev,gcc-5,g++-5], sources: [hvr-ghc,llvm-toolchain-precise-3.5,ubuntu-toolchain-r-test]}}
 
 before_install:
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
