@@ -146,10 +146,16 @@ main = do
                 condTreeComponents = condTreeComponents libraryCondTree ++ [
                   (
                     Var (Flag (FlagName "shared-llvm")),
+                    -- With flag '-fshared-llvm':
+                    --   * always link against shared library
                     CondNode (mempty { libBuildInfo = mempty { extraLibs = [sharedLib] ++ systemLibs } }) [] [],
-                    Just (CondNode (mempty { libBuildInfo = mempty { extraLibs = staticLibs ++ systemLibs } }) [] [])
+                    -- Without '-fshared-llvm':
+                    --   * executables are statically linked
+                    --   * GHCi and TH use the shared library
+                    Just (CondNode (mempty { libBuildInfo = mempty { extraLibs     = staticLibs  ++ systemLibs
+                                                                   , extraGHCiLibs = [sharedLib] ++ systemLibs } }) [] [])
                   )
-                ] 
+                ]
               }
            }
           configFlags' = configFlags {
