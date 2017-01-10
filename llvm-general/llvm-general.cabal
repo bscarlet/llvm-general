@@ -58,6 +58,7 @@ custom-setup
   setup-depends: base
                , Cabal
                , containers
+               , template-haskell
 
 library
   build-tools: llvm-config

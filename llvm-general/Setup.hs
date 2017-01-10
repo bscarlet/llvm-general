@@ -1,4 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TemplateHaskell   #-}
+
 import Control.Exception (SomeException, try)
 import Control.Monad
 import Data.Functor
@@ -9,14 +11,16 @@ import qualified Data.Map as Map
 import Data.Monoid
 import Data.Char
 import Distribution.Simple
+import Distribution.Simple.Utils (cabalVersion)
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Program
 import Distribution.Simple.Setup hiding (Flag)
 import Distribution.Simple.LocalBuildInfo
+import Distribution.System
 import Distribution.PackageDescription
 import Distribution.Version
 import System.Environment
-import Distribution.System
+import Language.Haskell.TH
 
 -- define these selectively in C files (where _not_ using HsFFI.h),
 -- rather than universally in the ccOptions, because HsFFI.h currently defines them
@@ -93,6 +97,22 @@ addToLdLibraryPath path = do
   v <- try $ getEnv ldLibraryPathVar :: IO (Either SomeException String)
   setEnv ldLibraryPathVar (path ++ either (const "") (ldLibraryPathSep ++) v)
 
+
+addLibs :: [String] -> BuildInfo -> BuildInfo
+addLibs libs bi = bi { extraLibs = libs }
+
+-- 'extraGHCiLibs' is only available in Cabal-1.22 and later. Since GHC<8.0
+-- provides no mechanism to test which version of the Cabal library we are
+-- compiling against, use TH tricky instead.
+addGHCiLibs :: [String] -> BuildInfo -> BuildInfo
+addGHCiLibs libs bi =
+  $( case withinRange cabalVersion (orLaterVersion (Version [1,22] [])) of
+       -- Not supported with old versions of Cabal; return BuildInfo unmodified
+       False -> return $ VarE (mkName "bi")
+       -- 'bi { extraGHCiLibs = libs }'
+       True  -> return $ RecUpdE (VarE (mkName "bi")) [(mkName "extraGHCiLibs", VarE (mkName "libs"))]
+   )
+
 addLLVMToLdLibraryPath :: ConfigFlags -> IO ()
 addLLVMToLdLibraryPath configFlags = do
   llvmConfig <- getLLVMConfig configFlags
@@ -132,7 +152,10 @@ main = do
       staticLibs <- liftM (map (fromJust . stripPrefix "-l") . words) $ llvmConfig "--libs"
       systemLibs <- liftM (map (fromJust . stripPrefix "-l") . words) $ llvmConfig "--system-libs"
 
-      let genericPackageDescription' = genericPackageDescription {
+      let staticLibs' = staticLibs ++ systemLibs
+          sharedLibs' = sharedLib   : systemLibs
+
+          genericPackageDescription' = genericPackageDescription {
             condLibrary = do
               libraryCondTree <- condLibrary genericPackageDescription
               return libraryCondTree {
@@ -148,12 +171,12 @@ main = do
                     Var (Flag (FlagName "shared-llvm")),
                     -- With flag '-fshared-llvm':
                     --   * always link against shared library
-                    CondNode (mempty { libBuildInfo = mempty { extraLibs = [sharedLib] ++ systemLibs } }) [] [],
+                    CondNode (mempty { libBuildInfo = addLibs sharedLibs' mempty }) [] [],
                     -- Without '-fshared-llvm':
                     --   * executables are statically linked
                     --   * GHCi and TH use the shared library
-                    Just (CondNode (mempty { libBuildInfo = mempty { extraLibs     = staticLibs  ++ systemLibs
-                                                                   , extraGHCiLibs = [sharedLib] ++ systemLibs } }) [] [])
+                    Just (CondNode (mempty { libBuildInfo = addLibs     staticLibs'
+                                                          $ addGHCiLibs sharedLibs' mempty }) [] [])
                   )
                 ]
               }
